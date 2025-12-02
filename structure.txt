@@ -1,0 +1,1299 @@
+.
+├── analysis_options.yaml
+├── android
+│   ├── app
+│   │   ├── build.gradle
+│   │   ├── google-services.json
+│   │   └── src
+│   │       ├── debug
+│   │       │   └── AndroidManifest.xml
+│   │       ├── main
+│   │       │   ├── AndroidManifest.xml
+│   │       │   ├── java
+│   │       │   │   ├── com
+│   │       │   │   └── io
+│   │       │   ├── kotlin
+│   │       │   │   └── com
+│   │       │   └── res
+│   │       │       ├── drawable
+│   │       │       ├── drawable-hdpi
+│   │       │       ├── drawable-mdpi
+│   │       │       ├── drawable-v21
+│   │       │       ├── drawable-xhdpi
+│   │       │       ├── drawable-xxhdpi
+│   │       │       ├── drawable-xxxhdpi
+│   │       │       ├── mipmap-anydpi-v26
+│   │       │       ├── mipmap-hdpi
+│   │       │       ├── mipmap-mdpi
+│   │       │       ├── mipmap-xhdpi
+│   │       │       ├── mipmap-xxhdpi
+│   │       │       ├── mipmap-xxxhdpi
+│   │       │       ├── values
+│   │       │       └── values-night
+│   │       └── profile
+│   │           └── AndroidManifest.xml
+│   ├── build.gradle
+│   ├── goldventory_android.iml
+│   ├── gradle
+│   │   └── wrapper
+│   │       ├── gradle-wrapper.jar
+│   │       └── gradle-wrapper.properties
+│   ├── gradle.properties
+│   ├── gradlew
+│   ├── gradlew.bat
+│   ├── key.properties
+│   ├── local.properties
+│   └── settings.gradle
+├── assets
+│   └── images
+│       ├── app_icon.png
+│       └── logo.png
+├── firebase.json
+├── goldventory.iml
+├── google-services.json
+├── GoogleService-Info.plist
+├── ios
+│   ├── Flutter
+│   │   ├── AppFrameworkInfo.plist
+│   │   ├── Debug.xcconfig
+│   │   ├── flutter_export_environment.sh
+│   │   ├── Generated.xcconfig
+│   │   └── Release.xcconfig
+│   ├── Podfile
+│   ├── Podfile.lock
+│   ├── Pods
+│   │   ├── abseil
+│   │   │   ├── absl
+│   │   │   │   ├── algorithm
+│   │   │   │   │   ├── algorithm.h
+│   │   │   │   │   └── container.h
+│   │   │   │   ├── base
+│   │   │   │   │   ├── attributes.h
+│   │   │   │   │   ├── call_once.h
+│   │   │   │   │   ├── casts.h
+│   │   │   │   │   ├── config.h
+│   │   │   │   │   ├── const_init.h
+│   │   │   │   │   ├── dynamic_annotations.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── log_severity.cc
+│   │   │   │   │   ├── log_severity.h
+│   │   │   │   │   ├── macros.h
+│   │   │   │   │   ├── no_destructor.h
+│   │   │   │   │   ├── nullability.h
+│   │   │   │   │   ├── optimization.h
+│   │   │   │   │   ├── options.h
+│   │   │   │   │   ├── policy_checks.h
+│   │   │   │   │   ├── port.h
+│   │   │   │   │   ├── prefetch.h
+│   │   │   │   │   └── thread_annotations.h
+│   │   │   │   ├── cleanup
+│   │   │   │   │   ├── cleanup.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── container
+│   │   │   │   │   ├── fixed_array.h
+│   │   │   │   │   ├── flat_hash_map.h
+│   │   │   │   │   ├── flat_hash_set.h
+│   │   │   │   │   ├── hash_container_defaults.h
+│   │   │   │   │   ├── inlined_vector.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── crc
+│   │   │   │   │   ├── crc32c.cc
+│   │   │   │   │   ├── crc32c.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── debugging
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── stacktrace.cc
+│   │   │   │   │   ├── stacktrace.h
+│   │   │   │   │   ├── symbolize_darwin.inc
+│   │   │   │   │   ├── symbolize_elf.inc
+│   │   │   │   │   ├── symbolize_emscripten.inc
+│   │   │   │   │   ├── symbolize_unimplemented.inc
+│   │   │   │   │   ├── symbolize_win32.inc
+│   │   │   │   │   ├── symbolize.cc
+│   │   │   │   │   └── symbolize.h
+│   │   │   │   ├── flags
+│   │   │   │   │   ├── commandlineflag.cc
+│   │   │   │   │   ├── commandlineflag.h
+│   │   │   │   │   ├── config.h
+│   │   │   │   │   ├── declare.h
+│   │   │   │   │   ├── flag.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── marshalling.cc
+│   │   │   │   │   ├── marshalling.h
+│   │   │   │   │   ├── reflection.cc
+│   │   │   │   │   ├── reflection.h
+│   │   │   │   │   ├── usage_config.cc
+│   │   │   │   │   └── usage_config.h
+│   │   │   │   ├── functional
+│   │   │   │   │   ├── any_invocable.h
+│   │   │   │   │   ├── bind_front.h
+│   │   │   │   │   ├── function_ref.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── hash
+│   │   │   │   │   ├── hash.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── log
+│   │   │   │   │   ├── absl_check.h
+│   │   │   │   │   ├── absl_log.h
+│   │   │   │   │   ├── absl_vlog_is_on.h
+│   │   │   │   │   ├── check.h
+│   │   │   │   │   ├── globals.cc
+│   │   │   │   │   ├── globals.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── log_entry.cc
+│   │   │   │   │   ├── log_entry.h
+│   │   │   │   │   ├── log_sink_registry.h
+│   │   │   │   │   ├── log_sink.cc
+│   │   │   │   │   ├── log_sink.h
+│   │   │   │   │   ├── log.h
+│   │   │   │   │   └── vlog_is_on.h
+│   │   │   │   ├── memory
+│   │   │   │   │   └── memory.h
+│   │   │   │   ├── meta
+│   │   │   │   │   └── type_traits.h
+│   │   │   │   ├── numeric
+│   │   │   │   │   ├── bits.h
+│   │   │   │   │   ├── int128_have_intrinsic.inc
+│   │   │   │   │   ├── int128_no_intrinsic.inc
+│   │   │   │   │   ├── int128.cc
+│   │   │   │   │   ├── int128.h
+│   │   │   │   │   └── internal
+│   │   │   │   ├── profiling
+│   │   │   │   │   └── internal
+│   │   │   │   ├── random
+│   │   │   │   │   ├── bernoulli_distribution.h
+│   │   │   │   │   ├── beta_distribution.h
+│   │   │   │   │   ├── bit_gen_ref.h
+│   │   │   │   │   ├── discrete_distribution.cc
+│   │   │   │   │   ├── discrete_distribution.h
+│   │   │   │   │   ├── distributions.h
+│   │   │   │   │   ├── exponential_distribution.h
+│   │   │   │   │   ├── gaussian_distribution.cc
+│   │   │   │   │   ├── gaussian_distribution.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── log_uniform_int_distribution.h
+│   │   │   │   │   ├── poisson_distribution.h
+│   │   │   │   │   ├── random.h
+│   │   │   │   │   ├── seed_gen_exception.cc
+│   │   │   │   │   ├── seed_gen_exception.h
+│   │   │   │   │   ├── seed_sequences.cc
+│   │   │   │   │   ├── seed_sequences.h
+│   │   │   │   │   ├── uniform_int_distribution.h
+│   │   │   │   │   ├── uniform_real_distribution.h
+│   │   │   │   │   └── zipf_distribution.h
+│   │   │   │   ├── status
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── status_payload_printer.cc
+│   │   │   │   │   ├── status_payload_printer.h
+│   │   │   │   │   ├── status.cc
+│   │   │   │   │   ├── status.h
+│   │   │   │   │   ├── statusor.cc
+│   │   │   │   │   └── statusor.h
+│   │   │   │   ├── strings
+│   │   │   │   │   ├── ascii.cc
+│   │   │   │   │   ├── ascii.h
+│   │   │   │   │   ├── charconv.cc
+│   │   │   │   │   ├── charconv.h
+│   │   │   │   │   ├── charset.h
+│   │   │   │   │   ├── cord_analysis.cc
+│   │   │   │   │   ├── cord_analysis.h
+│   │   │   │   │   ├── cord_buffer.cc
+│   │   │   │   │   ├── cord_buffer.h
+│   │   │   │   │   ├── cord.cc
+│   │   │   │   │   ├── cord.h
+│   │   │   │   │   ├── escaping.cc
+│   │   │   │   │   ├── escaping.h
+│   │   │   │   │   ├── has_absl_stringify.h
+│   │   │   │   │   ├── has_ostream_operator.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── match.cc
+│   │   │   │   │   ├── match.h
+│   │   │   │   │   ├── numbers.cc
+│   │   │   │   │   ├── numbers.h
+│   │   │   │   │   ├── str_cat.cc
+│   │   │   │   │   ├── str_cat.h
+│   │   │   │   │   ├── str_format.h
+│   │   │   │   │   ├── str_join.h
+│   │   │   │   │   ├── str_replace.cc
+│   │   │   │   │   ├── str_replace.h
+│   │   │   │   │   ├── str_split.cc
+│   │   │   │   │   ├── str_split.h
+│   │   │   │   │   ├── string_view.cc
+│   │   │   │   │   ├── string_view.h
+│   │   │   │   │   ├── strip.h
+│   │   │   │   │   ├── substitute.cc
+│   │   │   │   │   └── substitute.h
+│   │   │   │   ├── synchronization
+│   │   │   │   │   ├── barrier.cc
+│   │   │   │   │   ├── barrier.h
+│   │   │   │   │   ├── blocking_counter.cc
+│   │   │   │   │   ├── blocking_counter.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── mutex.cc
+│   │   │   │   │   ├── mutex.h
+│   │   │   │   │   ├── notification.cc
+│   │   │   │   │   └── notification.h
+│   │   │   │   ├── time
+│   │   │   │   │   ├── civil_time.cc
+│   │   │   │   │   ├── civil_time.h
+│   │   │   │   │   ├── clock.cc
+│   │   │   │   │   ├── clock.h
+│   │   │   │   │   ├── duration.cc
+│   │   │   │   │   ├── format.cc
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── time.cc
+│   │   │   │   │   └── time.h
+│   │   │   │   ├── types
+│   │   │   │   │   ├── any.h
+│   │   │   │   │   ├── bad_any_cast.cc
+│   │   │   │   │   ├── bad_any_cast.h
+│   │   │   │   │   ├── bad_optional_access.cc
+│   │   │   │   │   ├── bad_optional_access.h
+│   │   │   │   │   ├── bad_variant_access.cc
+│   │   │   │   │   ├── bad_variant_access.h
+│   │   │   │   │   ├── compare.h
+│   │   │   │   │   ├── internal
+│   │   │   │   │   ├── optional.h
+│   │   │   │   │   ├── span.h
+│   │   │   │   │   └── variant.h
+│   │   │   │   └── utility
+│   │   │   │       └── utility.h
+│   │   │   ├── LICENSE
+│   │   │   ├── PrivacyInfo.xcprivacy
+│   │   │   └── README.md
+│   │   ├── BoringSSL-GRPC
+│   │   │   ├── LICENSE
+│   │   │   └── src
+│   │   │       ├── crypto
+│   │   │       │   ├── asn1
+│   │   │       │   ├── base64
+│   │   │       │   ├── bcm_support.h
+│   │   │       │   ├── bcm_support.h.grpc_back
+│   │   │       │   ├── bio
+│   │   │       │   ├── blake2
+│   │   │       │   ├── bn_extra
+│   │   │       │   ├── buf
+│   │   │       │   ├── bytestring
+│   │   │       │   ├── chacha
+│   │   │       │   ├── cipher_extra
+│   │   │       │   ├── conf
+│   │   │       │   ├── cpu_aarch64_apple.c
+│   │   │       │   ├── cpu_aarch64_apple.c.grpc_back
+│   │   │       │   ├── cpu_aarch64_fuchsia.c
+│   │   │       │   ├── cpu_aarch64_fuchsia.c.grpc_back
+│   │   │       │   ├── cpu_aarch64_linux.c
+│   │   │       │   ├── cpu_aarch64_linux.c.grpc_back
+│   │   │       │   ├── cpu_aarch64_openbsd.c
+│   │   │       │   ├── cpu_aarch64_openbsd.c.grpc_back
+│   │   │       │   ├── cpu_aarch64_sysreg.c
+│   │   │       │   ├── cpu_aarch64_sysreg.c.grpc_back
+│   │   │       │   ├── cpu_aarch64_win.c
+│   │   │       │   ├── cpu_aarch64_win.c.grpc_back
+│   │   │       │   ├── cpu_arm_freebsd.c
+│   │   │       │   ├── cpu_arm_freebsd.c.grpc_back
+│   │   │       │   ├── cpu_arm_linux.c
+│   │   │       │   ├── cpu_arm_linux.c.grpc_back
+│   │   │       │   ├── cpu_arm_linux.h
+│   │   │       │   ├── cpu_arm_linux.h.grpc_back
+│   │   │       │   ├── cpu_intel.c
+│   │   │       │   ├── cpu_intel.c.grpc_back
+│   │   │       │   ├── crypto.c
+│   │   │       │   ├── crypto.c.grpc_back
+│   │   │       │   ├── curve25519
+│   │   │       │   ├── des
+│   │   │       │   ├── dh_extra
+│   │   │       │   ├── digest_extra
+│   │   │       │   ├── dilithium
+│   │   │       │   ├── dsa
+│   │   │       │   ├── ec_extra
+│   │   │       │   ├── ecdh_extra
+│   │   │       │   ├── ecdsa_extra
+│   │   │       │   ├── engine
+│   │   │       │   ├── err
+│   │   │       │   ├── evp
+│   │   │       │   ├── ex_data.c
+│   │   │       │   ├── ex_data.c.grpc_back
+│   │   │       │   ├── fipsmodule
+│   │   │       │   ├── hpke
+│   │   │       │   ├── hrss
+│   │   │       │   ├── internal.h
+│   │   │       │   ├── internal.h.grpc_back
+│   │   │       │   ├── keccak
+│   │   │       │   ├── kyber
+│   │   │       │   ├── lhash
+│   │   │       │   ├── mem.c
+│   │   │       │   ├── mem.c.grpc_back
+│   │   │       │   ├── mldsa
+│   │   │       │   ├── mlkem
+│   │   │       │   ├── obj
+│   │   │       │   ├── pem
+│   │   │       │   ├── pkcs7
+│   │   │       │   ├── pkcs8
+│   │   │       │   ├── poly1305
+│   │   │       │   ├── pool
+│   │   │       │   ├── rand_extra
+│   │   │       │   ├── rc4
+│   │   │       │   ├── refcount.c
+│   │   │       │   ├── refcount.c.grpc_back
+│   │   │       │   ├── rsa_extra
+│   │   │       │   ├── siphash
+│   │   │       │   ├── spx
+│   │   │       │   ├── stack
+│   │   │       │   ├── thread_none.c
+│   │   │       │   ├── thread_none.c.grpc_back
+│   │   │       │   ├── thread_pthread.c
+│   │   │       │   ├── thread_pthread.c.grpc_back
+│   │   │       │   ├── thread_win.c
+│   │   │       │   ├── thread_win.c.grpc_back
+│   │   │       │   ├── thread.c
+│   │   │       │   ├── thread.c.grpc_back
+│   │   │       │   ├── trust_token
+│   │   │       │   └── x509
+│   │   │       ├── gen
+│   │   │       │   └── crypto
+│   │   │       ├── include
+│   │   │       │   └── openssl
+│   │   │       ├── PrivacyInfo.xcprivacy
+│   │   │       ├── ssl
+│   │   │       │   ├── bio_ssl.cc
+│   │   │       │   ├── bio_ssl.cc.grpc_back
+│   │   │       │   ├── d1_both.cc
+│   │   │       │   ├── d1_both.cc.grpc_back
+│   │   │       │   ├── d1_lib.cc
+│   │   │       │   ├── d1_lib.cc.grpc_back
+│   │   │       │   ├── d1_pkt.cc
+│   │   │       │   ├── d1_pkt.cc.grpc_back
+│   │   │       │   ├── d1_srtp.cc
+│   │   │       │   ├── d1_srtp.cc.grpc_back
+│   │   │       │   ├── dtls_method.cc
+│   │   │       │   ├── dtls_method.cc.grpc_back
+│   │   │       │   ├── dtls_record.cc
+│   │   │       │   ├── dtls_record.cc.grpc_back
+│   │   │       │   ├── encrypted_client_hello.cc
+│   │   │       │   ├── encrypted_client_hello.cc.grpc_back
+│   │   │       │   ├── extensions.cc
+│   │   │       │   ├── extensions.cc.grpc_back
+│   │   │       │   ├── handoff.cc
+│   │   │       │   ├── handoff.cc.grpc_back
+│   │   │       │   ├── handshake_client.cc
+│   │   │       │   ├── handshake_client.cc.grpc_back
+│   │   │       │   ├── handshake_server.cc
+│   │   │       │   ├── handshake_server.cc.grpc_back
+│   │   │       │   ├── handshake.cc
+│   │   │       │   ├── handshake.cc.grpc_back
+│   │   │       │   ├── internal.h
+│   │   │       │   ├── internal.h.grpc_back
+│   │   │       │   ├── s3_both.cc
+│   │   │       │   ├── s3_both.cc.grpc_back
+│   │   │       │   ├── s3_lib.cc
+│   │   │       │   ├── s3_lib.cc.grpc_back
+│   │   │       │   ├── s3_pkt.cc
+│   │   │       │   ├── s3_pkt.cc.grpc_back
+│   │   │       │   ├── ssl_aead_ctx.cc
+│   │   │       │   ├── ssl_aead_ctx.cc.grpc_back
+│   │   │       │   ├── ssl_asn1.cc
+│   │   │       │   ├── ssl_asn1.cc.grpc_back
+│   │   │       │   ├── ssl_buffer.cc
+│   │   │       │   ├── ssl_buffer.cc.grpc_back
+│   │   │       │   ├── ssl_cert.cc
+│   │   │       │   ├── ssl_cert.cc.grpc_back
+│   │   │       │   ├── ssl_cipher.cc
+│   │   │       │   ├── ssl_cipher.cc.grpc_back
+│   │   │       │   ├── ssl_credential.cc
+│   │   │       │   ├── ssl_credential.cc.grpc_back
+│   │   │       │   ├── ssl_file.cc
+│   │   │       │   ├── ssl_file.cc.grpc_back
+│   │   │       │   ├── ssl_key_share.cc
+│   │   │       │   ├── ssl_key_share.cc.grpc_back
+│   │   │       │   ├── ssl_lib.cc
+│   │   │       │   ├── ssl_lib.cc.grpc_back
+│   │   │       │   ├── ssl_privkey.cc
+│   │   │       │   ├── ssl_privkey.cc.grpc_back
+│   │   │       │   ├── ssl_session.cc
+│   │   │       │   ├── ssl_session.cc.grpc_back
+│   │   │       │   ├── ssl_stat.cc
+│   │   │       │   ├── ssl_stat.cc.grpc_back
+│   │   │       │   ├── ssl_transcript.cc
+│   │   │       │   ├── ssl_transcript.cc.grpc_back
+│   │   │       │   ├── ssl_versions.cc
+│   │   │       │   ├── ssl_versions.cc.grpc_back
+│   │   │       │   ├── ssl_x509.cc
+│   │   │       │   ├── ssl_x509.cc.grpc_back
+│   │   │       │   ├── t1_enc.cc
+│   │   │       │   ├── t1_enc.cc.grpc_back
+│   │   │       │   ├── tls_method.cc
+│   │   │       │   ├── tls_method.cc.grpc_back
+│   │   │       │   ├── tls_record.cc
+│   │   │       │   ├── tls_record.cc.grpc_back
+│   │   │       │   ├── tls13_both.cc
+│   │   │       │   ├── tls13_both.cc.grpc_back
+│   │   │       │   ├── tls13_client.cc
+│   │   │       │   ├── tls13_client.cc.grpc_back
+│   │   │       │   ├── tls13_enc.cc
+│   │   │       │   ├── tls13_enc.cc.grpc_back
+│   │   │       │   ├── tls13_server.cc
+│   │   │       │   └── tls13_server.cc.grpc_back
+│   │   │       └── third_party
+│   │   │           └── fiat
+│   │   ├── Firebase
+│   │   │   ├── CoreOnly
+│   │   │   │   └── Sources
+│   │   │   │       ├── Firebase.h
+│   │   │   │       └── module.modulemap
+│   │   │   ├── LICENSE
+│   │   │   └── README.md
+│   │   ├── FirebaseAppCheckInterop
+│   │   │   ├── FirebaseAppCheck
+│   │   │   │   └── Interop
+│   │   │   │       ├── dummy.m
+│   │   │   │       └── Public
+│   │   │   ├── LICENSE
+│   │   │   └── README.md
+│   │   ├── FirebaseCore
+│   │   │   ├── FirebaseCore
+│   │   │   │   ├── Extension
+│   │   │   │   │   ├── FIRAppInternal.h
+│   │   │   │   │   ├── FIRComponent.h
+│   │   │   │   │   ├── FIRComponentContainer.h
+│   │   │   │   │   ├── FIRComponentType.h
+│   │   │   │   │   ├── FirebaseCoreInternal.h
+│   │   │   │   │   ├── FIRHeartbeatLogger.h
+│   │   │   │   │   ├── FIRLibrary.h
+│   │   │   │   │   └── FIRLogger.h
+│   │   │   │   └── Sources
+│   │   │   │       ├── FIRAnalyticsConfiguration.h
+│   │   │   │       ├── FIRAnalyticsConfiguration.m
+│   │   │   │       ├── FIRApp.m
+│   │   │   │       ├── FIRBundleUtil.h
+│   │   │   │       ├── FIRBundleUtil.m
+│   │   │   │       ├── FIRComponent.m
+│   │   │   │       ├── FIRComponentContainer.m
+│   │   │   │       ├── FIRComponentContainerInternal.h
+│   │   │   │       ├── FIRComponentType.m
+│   │   │   │       ├── FIRConfiguration.m
+│   │   │   │       ├── FIRConfigurationInternal.h
+│   │   │   │       ├── FIRFirebaseUserAgent.h
+│   │   │   │       ├── FIRFirebaseUserAgent.m
+│   │   │   │       ├── FIRHeartbeatLogger.m
+│   │   │   │       ├── FIRLogger.m
+│   │   │   │       ├── FIROptions.m
+│   │   │   │       ├── FIROptionsInternal.h
+│   │   │   │       ├── FIRTimestamp.m
+│   │   │   │       ├── FIRTimestampInternal.h
+│   │   │   │       ├── FIRVersion.m
+│   │   │   │       ├── Public
+│   │   │   │       └── Resources
+│   │   │   ├── LICENSE
+│   │   │   └── README.md
+│   │   ├── FirebaseCoreExtension
+│   │   │   ├── FirebaseCore
+│   │   │   │   └── Extension
+│   │   │   │       ├── dummy.m
+│   │   │   │       ├── FIRAppInternal.h
+│   │   │   │       ├── FIRComponent.h
+│   │   │   │       ├── FIRComponentContainer.h
+│   │   │   │       ├── FIRComponentType.h
+│   │   │   │       ├── FirebaseCoreInternal.h
+│   │   │   │       ├── FIRHeartbeatLogger.h
+│   │   │   │       ├── FIRLibrary.h
+│   │   │   │       ├── FIRLogger.h
+│   │   │   │       └── Resources
+│   │   │   ├── LICENSE
+│   │   │   └── README.md
+│   │   ├── FirebaseCoreInternal
+│   │   │   ├── FirebaseCore
+│   │   │   │   └── Internal
+│   │   │   │       └── Sources
+│   │   │   ├── LICENSE
+│   │   │   └── README.md
+│   │   ├── FirebaseFirestore
+│   │   │   ├── FirebaseFirestoreInternal
+│   │   │   │   ├── dummy.m
+│   │   │   │   └── FirebaseFirestore
+│   │   │   │       ├── FIRAggregateField.h
+│   │   │   │       ├── FIRAggregateQuery.h
+│   │   │   │       ├── FIRAggregateQuerySnapshot.h
+│   │   │   │       ├── FIRAggregateSource.h
+│   │   │   │       ├── FIRCollectionReference.h
+│   │   │   │       ├── FIRDocumentChange.h
+│   │   │   │       ├── FIRDocumentReference.h
+│   │   │   │       ├── FIRDocumentSnapshot.h
+│   │   │   │       ├── FirebaseFirestore.h
+│   │   │   │       ├── FIRFieldPath.h
+│   │   │   │       ├── FIRFieldValue.h
+│   │   │   │       ├── FIRFilter.h
+│   │   │   │       ├── FIRFirestore.h
+│   │   │   │       ├── FIRFirestoreErrors.h
+│   │   │   │       ├── FIRFirestoreSettings.h
+│   │   │   │       ├── FIRFirestoreSource.h
+│   │   │   │       ├── FIRGeoPoint.h
+│   │   │   │       ├── FIRListenerRegistration.h
+│   │   │   │       ├── FIRLoadBundleTask.h
+│   │   │   │       ├── FIRLocalCacheSettings.h
+│   │   │   │       ├── FIRPersistentCacheIndexManager.h
+│   │   │   │       ├── FIRQuery.h
+│   │   │   │       ├── FIRQuerySnapshot.h
+│   │   │   │       ├── FIRSnapshotListenOptions.h
+│   │   │   │       ├── FIRSnapshotMetadata.h
+│   │   │   │       ├── FIRTransaction.h
+│   │   │   │       ├── FIRTransactionOptions.h
+│   │   │   │       ├── FIRVectorValue.h
+│   │   │   │       └── FIRWriteBatch.h
+│   │   │   ├── Firestore
+│   │   │   │   ├── LICENSE
+│   │   │   │   └── Swift
+│   │   │   │       └── Source
+│   │   │   └── README.md
+│   │   ├── FirebaseFirestoreInternal
+│   │   │   ├── FirebaseAuth
+│   │   │   │   └── Interop
+│   │   │   │       └── Public
+│   │   │   ├── FirebaseCore
+│   │   │   │   └── Extension
+│   │   │   │       ├── FIRAppInternal.h
+│   │   │   │       ├── FIRComponent.h
+│   │   │   │       ├── FIRComponentContainer.h
+│   │   │   │       ├── FIRComponentType.h
+│   │   │   │       ├── FirebaseCoreInternal.h
+│   │   │   │       ├── FIRHeartbeatLogger.h
+│   │   │   │       ├── FIRLibrary.h
+│   │   │   │       └── FIRLogger.h
+│   │   │   ├── Firestore
+│   │   │   │   ├── core
+│   │   │   │   │   ├── include
+│   │   │   │   │   └── src
+│   │   │   │   ├── LICENSE
+│   │   │   │   ├── Protos
+│   │   │   │   │   └── nanopb
+│   │   │   │   ├── Source
+│   │   │   │   │   ├── API
+│   │   │   │   │   ├── Public
+│   │   │   │   │   └── Resources
+│   │   │   │   └── third_party
+│   │   │   │       └── nlohmann_json
+│   │   │   └── README.md
+│   │   ├── FirebaseSharedSwift
+│   │   │   ├── FirebaseSharedSwift
+│   │   │   │   ├── LICENSE
+│   │   │   │   └── Sources
+│   │   │   │       ├── FirebaseRemoteConfigValueDecoding.swift
+│   │   │   │       └── third_party
+│   │   │   └── README.md
+│   │   ├── GoogleUtilities
+│   │   │   ├── GoogleUtilities
+│   │   │   │   ├── Environment
+│   │   │   │   │   ├── GULAppEnvironmentUtil.m
+│   │   │   │   │   ├── NetworkInfo
+│   │   │   │   │   ├── Public
+│   │   │   │   │   └── SecureStorage
+│   │   │   │   ├── Logger
+│   │   │   │   │   ├── GULLogger.m
+│   │   │   │   │   └── Public
+│   │   │   │   ├── NSData+zlib
+│   │   │   │   │   ├── GULNSData+zlib.m
+│   │   │   │   │   └── Public
+│   │   │   │   └── Privacy
+│   │   │   │       └── Resources
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   └── third_party
+│   │   │       └── IsAppEncrypted
+│   │   │           ├── IsAppEncrypted.m
+│   │   │           └── Public
+│   │   ├── gRPC-C++
+│   │   │   ├── etc
+│   │   │   │   └── roots.pem
+│   │   │   ├── include
+│   │   │   │   ├── grpc
+│   │   │   │   └── grpcpp
+│   │   │   │       ├── alarm.h
+│   │   │   │       ├── channel.h
+│   │   │   │       ├── client_context.h
+│   │   │   │       ├── completion_queue.h
+│   │   │   │       ├── create_channel_posix.h
+│   │   │   │       ├── create_channel.h
+│   │   │   │       ├── ext
+│   │   │   │       ├── generic
+│   │   │   │       ├── grpcpp.h
+│   │   │   │       ├── health_check_service_interface.h
+│   │   │   │       ├── impl
+│   │   │   │       ├── passive_listener.h
+│   │   │   │       ├── resource_quota.h
+│   │   │   │       ├── security
+│   │   │   │       ├── server_builder.h
+│   │   │   │       ├── server_context.h
+│   │   │   │       ├── server_interface.h
+│   │   │   │       ├── server_posix.h
+│   │   │   │       ├── server.h
+│   │   │   │       ├── support
+│   │   │   │       ├── version_info.h
+│   │   │   │       └── xds_server_builder.h
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── src
+│   │   │   │   ├── core
+│   │   │   │   │   ├── channelz
+│   │   │   │   │   ├── client_channel
+│   │   │   │   │   ├── config
+│   │   │   │   │   ├── ext
+│   │   │   │   │   ├── filter
+│   │   │   │   │   ├── handshaker
+│   │   │   │   │   ├── lib
+│   │   │   │   │   ├── load_balancing
+│   │   │   │   │   ├── resolver
+│   │   │   │   │   ├── server
+│   │   │   │   │   ├── service_config
+│   │   │   │   │   ├── telemetry
+│   │   │   │   │   ├── tsi
+│   │   │   │   │   ├── util
+│   │   │   │   │   └── xds
+│   │   │   │   ├── cpp
+│   │   │   │   │   ├── client
+│   │   │   │   │   ├── common
+│   │   │   │   │   ├── server
+│   │   │   │   │   ├── thread_manager
+│   │   │   │   │   └── util
+│   │   │   │   └── objective-c
+│   │   │   │       └── PrivacyInfo.xcprivacy
+│   │   │   └── third_party
+│   │   │       ├── address_sorting
+│   │   │       │   ├── address_sorting_internal.h
+│   │   │       │   └── include
+│   │   │       ├── re2
+│   │   │       │   ├── re2
+│   │   │       │   └── util
+│   │   │       ├── upb
+│   │   │       │   └── upb
+│   │   │       ├── utf8_range
+│   │   │       │   └── utf8_range.h
+│   │   │       ├── xxhash
+│   │   │       │   └── xxhash.h
+│   │   │       └── zlib
+│   │   │           ├── crc32.h
+│   │   │           ├── deflate.h
+│   │   │           ├── gzguts.h
+│   │   │           ├── inffast.h
+│   │   │           ├── inffixed.h
+│   │   │           ├── inflate.h
+│   │   │           ├── inftrees.h
+│   │   │           ├── trees.h
+│   │   │           ├── zconf.h
+│   │   │           ├── zlib.h
+│   │   │           └── zutil.h
+│   │   ├── gRPC-Core
+│   │   │   ├── include
+│   │   │   │   └── grpc
+│   │   │   │       ├── byte_buffer_reader.h
+│   │   │   │       ├── byte_buffer.h
+│   │   │   │       ├── census.h
+│   │   │   │       ├── compression.h
+│   │   │   │       ├── credentials.h
+│   │   │   │       ├── event_engine
+│   │   │   │       ├── fork.h
+│   │   │   │       ├── grpc_audit_logging.h
+│   │   │   │       ├── grpc_crl_provider.h
+│   │   │   │       ├── grpc_posix.h
+│   │   │   │       ├── grpc_security_constants.h
+│   │   │   │       ├── grpc_security.h
+│   │   │   │       ├── grpc.h
+│   │   │   │       ├── impl
+│   │   │   │       ├── load_reporting.h
+│   │   │   │       ├── module.modulemap
+│   │   │   │       ├── passive_listener.h
+│   │   │   │       ├── slice_buffer.h
+│   │   │   │       ├── slice.h
+│   │   │   │       ├── status.h
+│   │   │   │       └── support
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── src
+│   │   │   │   ├── core
+│   │   │   │   │   ├── channelz
+│   │   │   │   │   ├── client_channel
+│   │   │   │   │   ├── config
+│   │   │   │   │   ├── ext
+│   │   │   │   │   ├── filter
+│   │   │   │   │   ├── handshaker
+│   │   │   │   │   ├── lib
+│   │   │   │   │   ├── load_balancing
+│   │   │   │   │   ├── plugin_registry
+│   │   │   │   │   ├── resolver
+│   │   │   │   │   ├── server
+│   │   │   │   │   ├── service_config
+│   │   │   │   │   ├── telemetry
+│   │   │   │   │   ├── tsi
+│   │   │   │   │   ├── util
+│   │   │   │   │   └── xds
+│   │   │   │   └── objective-c
+│   │   │   │       └── PrivacyInfo.xcprivacy
+│   │   │   └── third_party
+│   │   │       ├── address_sorting
+│   │   │       │   ├── address_sorting_internal.h
+│   │   │       │   ├── address_sorting_posix.c
+│   │   │       │   ├── address_sorting_windows.c
+│   │   │       │   ├── address_sorting.c
+│   │   │       │   └── include
+│   │   │       ├── re2
+│   │   │       │   ├── re2
+│   │   │       │   └── util
+│   │   │       ├── upb
+│   │   │       │   └── upb
+│   │   │       ├── utf8_range
+│   │   │       │   ├── utf8_range.c
+│   │   │       │   └── utf8_range.h
+│   │   │       ├── xxhash
+│   │   │       │   └── xxhash.h
+│   │   │       └── zlib
+│   │   │           ├── adler32.c
+│   │   │           ├── compress.c
+│   │   │           ├── crc32.c
+│   │   │           ├── crc32.h
+│   │   │           ├── deflate.c
+│   │   │           ├── deflate.h
+│   │   │           ├── gzguts.h
+│   │   │           ├── infback.c
+│   │   │           ├── inffast.c
+│   │   │           ├── inffast.h
+│   │   │           ├── inffixed.h
+│   │   │           ├── inflate.c
+│   │   │           ├── inflate.h
+│   │   │           ├── inftrees.c
+│   │   │           ├── inftrees.h
+│   │   │           ├── trees.c
+│   │   │           ├── trees.h
+│   │   │           ├── uncompr.c
+│   │   │           ├── zconf.h
+│   │   │           ├── zlib.h
+│   │   │           ├── zutil.c
+│   │   │           └── zutil.h
+│   │   ├── Headers
+│   │   │   ├── Private
+│   │   │   │   └── Firebase
+│   │   │   │       └── Firebase.h -> ../../../Firebase/CoreOnly/Sources/Firebase.h
+│   │   │   └── Public
+│   │   │       └── Firebase
+│   │   │           └── Firebase.h -> ../../../Firebase/CoreOnly/Sources/Firebase.h
+│   │   ├── leveldb-library
+│   │   │   ├── db
+│   │   │   │   ├── builder.cc
+│   │   │   │   ├── builder.h
+│   │   │   │   ├── c.cc
+│   │   │   │   ├── db_impl.cc
+│   │   │   │   ├── db_impl.h
+│   │   │   │   ├── db_iter.cc
+│   │   │   │   ├── db_iter.h
+│   │   │   │   ├── dbformat.cc
+│   │   │   │   ├── dbformat.h
+│   │   │   │   ├── dumpfile.cc
+│   │   │   │   ├── filename.cc
+│   │   │   │   ├── filename.h
+│   │   │   │   ├── log_format.h
+│   │   │   │   ├── log_reader.cc
+│   │   │   │   ├── log_reader.h
+│   │   │   │   ├── log_writer.cc
+│   │   │   │   ├── log_writer.h
+│   │   │   │   ├── memtable.cc
+│   │   │   │   ├── memtable.h
+│   │   │   │   ├── repair.cc
+│   │   │   │   ├── skiplist.h
+│   │   │   │   ├── snapshot.h
+│   │   │   │   ├── table_cache.cc
+│   │   │   │   ├── table_cache.h
+│   │   │   │   ├── version_edit.cc
+│   │   │   │   ├── version_edit.h
+│   │   │   │   ├── version_set.cc
+│   │   │   │   ├── version_set.h
+│   │   │   │   ├── write_batch_internal.h
+│   │   │   │   └── write_batch.cc
+│   │   │   ├── include
+│   │   │   │   └── leveldb
+│   │   │   │       ├── c.h
+│   │   │   │       ├── cache.h
+│   │   │   │       ├── comparator.h
+│   │   │   │       ├── db.h
+│   │   │   │       ├── dumpfile.h
+│   │   │   │       ├── env.h
+│   │   │   │       ├── export.h
+│   │   │   │       ├── filter_policy.h
+│   │   │   │       ├── iterator.h
+│   │   │   │       ├── options.h
+│   │   │   │       ├── slice.h
+│   │   │   │       ├── status.h
+│   │   │   │       ├── table_builder.h
+│   │   │   │       ├── table.h
+│   │   │   │       └── write_batch.h
+│   │   │   ├── LICENSE
+│   │   │   ├── port
+│   │   │   │   ├── port_example.h
+│   │   │   │   ├── port_stdcxx.h
+│   │   │   │   ├── port.h
+│   │   │   │   └── thread_annotations.h
+│   │   │   ├── README.md
+│   │   │   ├── Resources
+│   │   │   │   └── PrivacyInfo.xcprivacy
+│   │   │   ├── table
+│   │   │   │   ├── block_builder.cc
+│   │   │   │   ├── block_builder.h
+│   │   │   │   ├── block.cc
+│   │   │   │   ├── block.h
+│   │   │   │   ├── filter_block.cc
+│   │   │   │   ├── filter_block.h
+│   │   │   │   ├── format.cc
+│   │   │   │   ├── format.h
+│   │   │   │   ├── iterator_wrapper.h
+│   │   │   │   ├── iterator.cc
+│   │   │   │   ├── merger.cc
+│   │   │   │   ├── merger.h
+│   │   │   │   ├── table_builder.cc
+│   │   │   │   ├── table.cc
+│   │   │   │   ├── two_level_iterator.cc
+│   │   │   │   └── two_level_iterator.h
+│   │   │   └── util
+│   │   │       ├── arena.cc
+│   │   │       ├── arena.h
+│   │   │       ├── bloom.cc
+│   │   │       ├── cache.cc
+│   │   │       ├── coding.cc
+│   │   │       ├── coding.h
+│   │   │       ├── comparator.cc
+│   │   │       ├── crc32c.cc
+│   │   │       ├── crc32c.h
+│   │   │       ├── env_posix_test_helper.h
+│   │   │       ├── env_posix.cc
+│   │   │       ├── env_windows_test_helper.h
+│   │   │       ├── env.cc
+│   │   │       ├── filter_policy.cc
+│   │   │       ├── hash.cc
+│   │   │       ├── hash.h
+│   │   │       ├── histogram.cc
+│   │   │       ├── histogram.h
+│   │   │       ├── logging.cc
+│   │   │       ├── logging.h
+│   │   │       ├── mutexlock.h
+│   │   │       ├── no_destructor.h
+│   │   │       ├── options.cc
+│   │   │       ├── posix_logger.h
+│   │   │       ├── random.h
+│   │   │       ├── status.cc
+│   │   │       ├── testutil.h
+│   │   │       └── windows_logger.h
+│   │   ├── Local Podspecs
+│   │   │   ├── cloud_firestore.podspec.json
+│   │   │   ├── firebase_core.podspec.json
+│   │   │   ├── Flutter.podspec.json
+│   │   │   ├── open_filex.podspec.json
+│   │   │   ├── path_provider_foundation.podspec.json
+│   │   │   └── share_plus.podspec.json
+│   │   ├── nanopb
+│   │   │   ├── LICENSE.txt
+│   │   │   ├── pb_common.c
+│   │   │   ├── pb_common.h
+│   │   │   ├── pb_decode.c
+│   │   │   ├── pb_decode.h
+│   │   │   ├── pb_encode.c
+│   │   │   ├── pb_encode.h
+│   │   │   ├── pb.h
+│   │   │   ├── README.md
+│   │   │   └── spm_resources
+│   │   │       └── PrivacyInfo.xcprivacy
+│   │   ├── Pods.xcodeproj
+│   │   │   ├── project.pbxproj
+│   │   │   └── xcuserdata
+│   │   │       └── tribhuvankomarla.xcuserdatad
+│   │   │           └── xcschemes
+│   │   └── Target Support Files
+│   │       ├── abseil
+│   │       │   ├── abseil-dummy.m
+│   │       │   ├── abseil-Info.plist
+│   │       │   ├── abseil-prefix.pch
+│   │       │   ├── abseil-umbrella.h
+│   │       │   ├── abseil.debug.xcconfig
+│   │       │   ├── abseil.modulemap
+│   │       │   ├── abseil.release.xcconfig
+│   │       │   └── ResourceBundle-xcprivacy-abseil-Info.plist
+│   │       ├── BoringSSL-GRPC
+│   │       │   ├── BoringSSL-GRPC-dummy.m
+│   │       │   ├── BoringSSL-GRPC-Info.plist
+│   │       │   ├── BoringSSL-GRPC-prefix.pch
+│   │       │   ├── BoringSSL-GRPC-umbrella.h
+│   │       │   ├── BoringSSL-GRPC.debug.xcconfig
+│   │       │   ├── BoringSSL-GRPC.modulemap
+│   │       │   ├── BoringSSL-GRPC.release.xcconfig
+│   │       │   └── ResourceBundle-openssl_grpc-BoringSSL-GRPC-Info.plist
+│   │       ├── cloud_firestore
+│   │       │   ├── cloud_firestore-dummy.m
+│   │       │   ├── cloud_firestore-Info.plist
+│   │       │   ├── cloud_firestore-prefix.pch
+│   │       │   ├── cloud_firestore-umbrella.h
+│   │       │   ├── cloud_firestore.debug.xcconfig
+│   │       │   ├── cloud_firestore.modulemap
+│   │       │   └── cloud_firestore.release.xcconfig
+│   │       ├── Firebase
+│   │       │   ├── Firebase.debug.xcconfig
+│   │       │   └── Firebase.release.xcconfig
+│   │       ├── firebase_core
+│   │       │   ├── firebase_core-dummy.m
+│   │       │   ├── firebase_core-Info.plist
+│   │       │   ├── firebase_core-prefix.pch
+│   │       │   ├── firebase_core-umbrella.h
+│   │       │   ├── firebase_core.debug.xcconfig
+│   │       │   ├── firebase_core.modulemap
+│   │       │   └── firebase_core.release.xcconfig
+│   │       ├── FirebaseAppCheckInterop
+│   │       │   ├── FirebaseAppCheckInterop-dummy.m
+│   │       │   ├── FirebaseAppCheckInterop-Info.plist
+│   │       │   ├── FirebaseAppCheckInterop-prefix.pch
+│   │       │   ├── FirebaseAppCheckInterop-umbrella.h
+│   │       │   ├── FirebaseAppCheckInterop.debug.xcconfig
+│   │       │   ├── FirebaseAppCheckInterop.modulemap
+│   │       │   └── FirebaseAppCheckInterop.release.xcconfig
+│   │       ├── FirebaseCore
+│   │       │   ├── FirebaseCore-dummy.m
+│   │       │   ├── FirebaseCore-Info.plist
+│   │       │   ├── FirebaseCore-umbrella.h
+│   │       │   ├── FirebaseCore.debug.xcconfig
+│   │       │   ├── FirebaseCore.modulemap
+│   │       │   ├── FirebaseCore.release.xcconfig
+│   │       │   └── ResourceBundle-FirebaseCore_Privacy-FirebaseCore-Info.plist
+│   │       ├── FirebaseCoreExtension
+│   │       │   ├── FirebaseCoreExtension-dummy.m
+│   │       │   ├── FirebaseCoreExtension-Info.plist
+│   │       │   ├── FirebaseCoreExtension-prefix.pch
+│   │       │   ├── FirebaseCoreExtension-umbrella.h
+│   │       │   ├── FirebaseCoreExtension.debug.xcconfig
+│   │       │   ├── FirebaseCoreExtension.modulemap
+│   │       │   ├── FirebaseCoreExtension.release.xcconfig
+│   │       │   └── ResourceBundle-FirebaseCoreExtension_Privacy-FirebaseCoreExtension-Info.plist
+│   │       ├── FirebaseCoreInternal
+│   │       │   ├── FirebaseCoreInternal-dummy.m
+│   │       │   ├── FirebaseCoreInternal-Info.plist
+│   │       │   ├── FirebaseCoreInternal-prefix.pch
+│   │       │   ├── FirebaseCoreInternal-umbrella.h
+│   │       │   ├── FirebaseCoreInternal.debug.xcconfig
+│   │       │   ├── FirebaseCoreInternal.modulemap
+│   │       │   ├── FirebaseCoreInternal.release.xcconfig
+│   │       │   └── ResourceBundle-FirebaseCoreInternal_Privacy-FirebaseCoreInternal-Info.plist
+│   │       ├── FirebaseFirestore
+│   │       │   ├── FirebaseFirestore-dummy.m
+│   │       │   ├── FirebaseFirestore-Info.plist
+│   │       │   ├── FirebaseFirestore-umbrella.h
+│   │       │   ├── FirebaseFirestore.debug.xcconfig
+│   │       │   ├── FirebaseFirestore.modulemap
+│   │       │   ├── FirebaseFirestore.release.xcconfig
+│   │       │   └── ResourceBundle-FirebaseFirestore_Privacy-FirebaseFirestore-Info.plist
+│   │       ├── FirebaseFirestoreInternal
+│   │       │   ├── FirebaseFirestoreInternal-dummy.m
+│   │       │   ├── FirebaseFirestoreInternal-Info.plist
+│   │       │   ├── FirebaseFirestoreInternal-umbrella.h
+│   │       │   ├── FirebaseFirestoreInternal.debug.xcconfig
+│   │       │   ├── FirebaseFirestoreInternal.modulemap
+│   │       │   ├── FirebaseFirestoreInternal.release.xcconfig
+│   │       │   └── ResourceBundle-FirebaseFirestoreInternal_Privacy-FirebaseFirestoreInternal-Info.plist
+│   │       ├── FirebaseSharedSwift
+│   │       │   ├── FirebaseSharedSwift-dummy.m
+│   │       │   ├── FirebaseSharedSwift-Info.plist
+│   │       │   ├── FirebaseSharedSwift-umbrella.h
+│   │       │   ├── FirebaseSharedSwift.debug.xcconfig
+│   │       │   ├── FirebaseSharedSwift.modulemap
+│   │       │   └── FirebaseSharedSwift.release.xcconfig
+│   │       ├── Flutter
+│   │       │   ├── Flutter.debug.xcconfig
+│   │       │   └── Flutter.release.xcconfig
+│   │       ├── GoogleUtilities
+│   │       │   ├── GoogleUtilities-dummy.m
+│   │       │   ├── GoogleUtilities-Info.plist
+│   │       │   ├── GoogleUtilities-umbrella.h
+│   │       │   ├── GoogleUtilities.debug.xcconfig
+│   │       │   ├── GoogleUtilities.modulemap
+│   │       │   ├── GoogleUtilities.release.xcconfig
+│   │       │   └── ResourceBundle-GoogleUtilities_Privacy-GoogleUtilities-Info.plist
+│   │       ├── gRPC-C++
+│   │       │   ├── gRPC-C++-dummy.m
+│   │       │   ├── gRPC-C++-Info.plist
+│   │       │   ├── gRPC-C++-prefix.pch
+│   │       │   ├── gRPC-C++-umbrella.h
+│   │       │   ├── gRPC-C++.debug.xcconfig
+│   │       │   ├── gRPC-C++.modulemap
+│   │       │   ├── gRPC-C++.release.xcconfig
+│   │       │   ├── ResourceBundle-gRPCCertificates-Cpp-gRPC-C++-Info.plist
+│   │       │   └── ResourceBundle-grpcpp-gRPC-C++-Info.plist
+│   │       ├── gRPC-Core
+│   │       │   ├── gRPC-Core-dummy.m
+│   │       │   ├── gRPC-Core-Info.plist
+│   │       │   ├── gRPC-Core-prefix.pch
+│   │       │   ├── gRPC-Core.debug.xcconfig
+│   │       │   ├── gRPC-Core.modulemap
+│   │       │   ├── gRPC-Core.release.xcconfig
+│   │       │   └── ResourceBundle-grpc-gRPC-Core-Info.plist
+│   │       ├── leveldb-library
+│   │       │   ├── leveldb-library-dummy.m
+│   │       │   ├── leveldb-library-Info.plist
+│   │       │   ├── leveldb-library-prefix.pch
+│   │       │   ├── leveldb-library-umbrella.h
+│   │       │   ├── leveldb-library.debug.xcconfig
+│   │       │   ├── leveldb-library.modulemap
+│   │       │   ├── leveldb-library.release.xcconfig
+│   │       │   └── ResourceBundle-leveldb_Privacy-leveldb-library-Info.plist
+│   │       ├── nanopb
+│   │       │   ├── nanopb-dummy.m
+│   │       │   ├── nanopb-Info.plist
+│   │       │   ├── nanopb-prefix.pch
+│   │       │   ├── nanopb-umbrella.h
+│   │       │   ├── nanopb.debug.xcconfig
+│   │       │   ├── nanopb.modulemap
+│   │       │   ├── nanopb.release.xcconfig
+│   │       │   └── ResourceBundle-nanopb_Privacy-nanopb-Info.plist
+│   │       ├── open_filex
+│   │       │   ├── open_filex-dummy.m
+│   │       │   ├── open_filex-Info.plist
+│   │       │   ├── open_filex-prefix.pch
+│   │       │   ├── open_filex-umbrella.h
+│   │       │   ├── open_filex.debug.xcconfig
+│   │       │   ├── open_filex.modulemap
+│   │       │   └── open_filex.release.xcconfig
+│   │       ├── path_provider_foundation
+│   │       │   ├── path_provider_foundation-dummy.m
+│   │       │   ├── path_provider_foundation-Info.plist
+│   │       │   ├── path_provider_foundation-prefix.pch
+│   │       │   ├── path_provider_foundation-umbrella.h
+│   │       │   ├── path_provider_foundation.debug.xcconfig
+│   │       │   ├── path_provider_foundation.modulemap
+│   │       │   ├── path_provider_foundation.release.xcconfig
+│   │       │   └── ResourceBundle-path_provider_foundation_privacy-path_provider_foundation-Info.plist
+│   │       ├── Pods-Runner
+│   │       │   ├── Pods-Runner-acknowledgements.markdown
+│   │       │   ├── Pods-Runner-acknowledgements.plist
+│   │       │   ├── Pods-Runner-dummy.m
+│   │       │   ├── Pods-Runner-frameworks-Debug-input-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks-Debug-output-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks-Profile-input-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks-Profile-output-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks-Release-input-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks-Release-output-files.xcfilelist
+│   │       │   ├── Pods-Runner-frameworks.sh
+│   │       │   ├── Pods-Runner-Info.plist
+│   │       │   ├── Pods-Runner-umbrella.h
+│   │       │   ├── Pods-Runner.debug.xcconfig
+│   │       │   ├── Pods-Runner.modulemap
+│   │       │   ├── Pods-Runner.profile.xcconfig
+│   │       │   └── Pods-Runner.release.xcconfig
+│   │       ├── Pods-RunnerTests
+│   │       │   ├── Pods-RunnerTests-acknowledgements.markdown
+│   │       │   ├── Pods-RunnerTests-acknowledgements.plist
+│   │       │   ├── Pods-RunnerTests-dummy.m
+│   │       │   ├── Pods-RunnerTests-Info.plist
+│   │       │   ├── Pods-RunnerTests-umbrella.h
+│   │       │   ├── Pods-RunnerTests.debug.xcconfig
+│   │       │   ├── Pods-RunnerTests.modulemap
+│   │       │   ├── Pods-RunnerTests.profile.xcconfig
+│   │       │   └── Pods-RunnerTests.release.xcconfig
+│   │       └── share_plus
+│   │           ├── ResourceBundle-share_plus_privacy-share_plus-Info.plist
+│   │           ├── share_plus-dummy.m
+│   │           ├── share_plus-Info.plist
+│   │           ├── share_plus-prefix.pch
+│   │           ├── share_plus-umbrella.h
+│   │           ├── share_plus.debug.xcconfig
+│   │           ├── share_plus.modulemap
+│   │           └── share_plus.release.xcconfig
+│   ├── Runner
+│   │   ├── AppDelegate.swift
+│   │   ├── Assets.xcassets
+│   │   │   ├── AppIcon.appiconset
+│   │   │   │   ├── Contents.json
+│   │   │   │   ├── Icon-App-1024x1024@1x.png
+│   │   │   │   ├── Icon-App-20x20@1x.png
+│   │   │   │   ├── Icon-App-20x20@2x.png
+│   │   │   │   ├── Icon-App-20x20@3x.png
+│   │   │   │   ├── Icon-App-29x29@1x.png
+│   │   │   │   ├── Icon-App-29x29@2x.png
+│   │   │   │   ├── Icon-App-29x29@3x.png
+│   │   │   │   ├── Icon-App-40x40@1x.png
+│   │   │   │   ├── Icon-App-40x40@2x.png
+│   │   │   │   ├── Icon-App-40x40@3x.png
+│   │   │   │   ├── Icon-App-60x60@2x.png
+│   │   │   │   ├── Icon-App-60x60@3x.png
+│   │   │   │   ├── Icon-App-76x76@1x.png
+│   │   │   │   ├── Icon-App-76x76@2x.png
+│   │   │   │   └── Icon-App-83.5x83.5@2x.png
+│   │   │   └── LaunchImage.imageset
+│   │   │       ├── Contents.json
+│   │   │       ├── LaunchImage.png
+│   │   │       ├── LaunchImage@2x.png
+│   │   │       ├── LaunchImage@3x.png
+│   │   │       └── README.md
+│   │   ├── Base.lproj
+│   │   │   ├── LaunchScreen.storyboard
+│   │   │   └── Main.storyboard
+│   │   ├── GeneratedPluginRegistrant.h
+│   │   ├── GeneratedPluginRegistrant.m
+│   │   ├── GoogleService-Info.plist
+│   │   ├── Info.plist
+│   │   └── Runner-Bridging-Header.h
+│   ├── Runner.xcodeproj
+│   │   ├── project.pbxproj
+│   │   ├── project.xcworkspace
+│   │   │   ├── contents.xcworkspacedata
+│   │   │   └── xcshareddata
+│   │   │       ├── IDEWorkspaceChecks.plist
+│   │   │       ├── swiftpm
+│   │   │       │   └── configuration
+│   │   │       └── WorkspaceSettings.xcsettings
+│   │   └── xcshareddata
+│   │       └── xcschemes
+│   │           └── Runner.xcscheme
+│   ├── Runner.xcworkspace
+│   │   ├── contents.xcworkspacedata
+│   │   ├── xcshareddata
+│   │   │   ├── IDEWorkspaceChecks.plist
+│   │   │   ├── swiftpm
+│   │   │   │   └── configuration
+│   │   │   └── WorkspaceSettings.xcsettings
+│   │   └── xcuserdata
+│   │       └── tribhuvankomarla.xcuserdatad
+│   │           └── UserInterfaceState.xcuserstate
+│   └── RunnerTests
+│       └── RunnerTests.swift
+├── lib
+│   ├── app
+│   │   ├── app.dart
+│   │   ├── routes.dart
+│   │   └── theme.dart
+│   ├── core
+│   │   ├── utils
+│   │   │   └── helpers.dart
+│   │   └── widgets
+│   │       ├── editable_cell.dart
+│   │       ├── inventory_table.dart
+│   │       └── responsive_layout.dart
+│   ├── data
+│   │   ├── models
+│   │   │   └── product_model.dart
+│   │   └── repositories
+│   │       └── product_repository.dart
+│   ├── features
+│   │   ├── auth
+│   │   │   └── view
+│   │   │       └── login_screen.dart
+│   │   ├── dashboard
+│   │   │   └── view
+│   │   │       └── dashboard_screen.dart
+│   │   ├── inventory
+│   │   │   ├── view
+│   │   │   │   ├── inventory_screen.dart
+│   │   │   │   ├── items
+│   │   │   │   │   ├── gajje_matil_screen.dart
+│   │   │   │   │   └── round_matil_screen.dart
+│   │   │   │   └── reorder_screen.dart
+│   │   │   └── view_model
+│   │   │       └── inventory_view_model.dart
+│   │   └── splash
+│   │       └── view
+│   │           └── splash_screen.dart
+│   ├── firebase_options.dart
+│   ├── global
+│   │   └── global_state.dart
+│   └── main.dart
+├── linux
+│   ├── CMakeLists.txt
+│   ├── flutter
+│   │   ├── CMakeLists.txt
+│   │   ├── ephemeral
+│   │   ├── generated_plugin_registrant.cc
+│   │   ├── generated_plugin_registrant.h
+│   │   └── generated_plugins.cmake
+│   └── runner
+│       ├── CMakeLists.txt
+│       ├── main.cc
+│       ├── my_application.cc
+│       └── my_application.h
+├── macos
+│   ├── Flutter
+│   │   ├── ephemeral
+│   │   │   ├── flutter_export_environment.sh
+│   │   │   └── Flutter-Generated.xcconfig
+│   │   ├── Flutter-Debug.xcconfig
+│   │   ├── Flutter-Release.xcconfig
+│   │   └── GeneratedPluginRegistrant.swift
+│   ├── Podfile
+│   ├── Runner
+│   │   ├── AppDelegate.swift
+│   │   ├── Assets.xcassets
+│   │   │   └── AppIcon.appiconset
+│   │   │       ├── app_icon_1024.png
+│   │   │       ├── app_icon_128.png
+│   │   │       ├── app_icon_16.png
+│   │   │       ├── app_icon_256.png
+│   │   │       ├── app_icon_32.png
+│   │   │       ├── app_icon_512.png
+│   │   │       ├── app_icon_64.png
+│   │   │       └── Contents.json
+│   │   ├── Base.lproj
+│   │   │   └── MainMenu.xib
+│   │   ├── Configs
+│   │   │   ├── AppInfo.xcconfig
+│   │   │   ├── Debug.xcconfig
+│   │   │   ├── Release.xcconfig
+│   │   │   └── Warnings.xcconfig
+│   │   ├── DebugProfile.entitlements
+│   │   ├── GoogleService-Info.plist
+│   │   ├── Info.plist
+│   │   ├── MainFlutterWindow.swift
+│   │   └── Release.entitlements
+│   ├── Runner.xcodeproj
+│   │   ├── project.pbxproj
+│   │   ├── project.xcworkspace
+│   │   │   └── xcshareddata
+│   │   │       ├── IDEWorkspaceChecks.plist
+│   │   │       └── swiftpm
+│   │   │           └── configuration
+│   │   └── xcshareddata
+│   │       └── xcschemes
+│   │           └── Runner.xcscheme
+│   ├── Runner.xcworkspace
+│   │   ├── contents.xcworkspacedata
+│   │   └── xcshareddata
+│   │       ├── IDEWorkspaceChecks.plist
+│   │       └── swiftpm
+│   │           └── configuration
+│   └── RunnerTests
+│       └── RunnerTests.swift
+├── pubspec.lock
+├── pubspec.yaml
+├── README.md
+├── structure.txt
+├── test
+│   └── widget_test.dart
+├── web
+│   ├── favicon.png
+│   ├── icons
+│   │   ├── Icon-192.png
+│   │   ├── Icon-512.png
+│   │   ├── Icon-maskable-192.png
+│   │   └── Icon-maskable-512.png
+│   ├── index.html
+│   └── manifest.json
+└── windows
+    ├── CMakeLists.txt
+    ├── flutter
+    │   ├── CMakeLists.txt
+    │   ├── ephemeral
+    │   ├── generated_plugin_registrant.cc
+    │   ├── generated_plugin_registrant.h
+    │   └── generated_plugins.cmake
+    └── runner
+        ├── CMakeLists.txt
+        ├── flutter_window.cpp
+        ├── flutter_window.h
+        ├── main.cpp
+        ├── resource.h
+        ├── resources
+        │   └── app_icon.ico
+        ├── runner.exe.manifest
+        ├── Runner.rc
+        ├── utils.cpp
+        ├── utils.h
+        ├── win32_window.cpp
+        └── win32_window.h
+
+389 directories, 908 files

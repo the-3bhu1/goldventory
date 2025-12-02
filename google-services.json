@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "227166830823",
+    "project_id": "goldventory",
+    "storage_bucket": "goldventory.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:227166830823:android:1f90dfc69ae1008bd86242",
+        "android_client_info": {
+          "package_name": "com.darshangold.goldventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBroWuIu8Ap9lwjY6BGnV7X4MzBcj0UcTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
