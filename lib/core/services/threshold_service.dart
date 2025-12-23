@@ -8,15 +8,18 @@ import 'dart:convert' as convert;
 /// Owns all threshold configuration and persists it to Firestore at
 /// `settings/thresholds`.
 ///
-/// In-memory model (human‑readable, NOT Firestore‑safe):
-///   _thresholds:
-///     Map<category,
-///       Map<item,
-///         Map<subItem,
-///           Map<weightKey, int>>>>
+/// In-memory model (human-readable, NOT Firestore-safe):
 ///
-///   _itemSharedWeights:
-///     Map<category, Map<item, List<weightKey>>>
+/// ```
+/// _thresholds:
+///   Map<category,
+///     Map<item,
+///       Map<subItem,
+///         Map<weightKey, int>>>>
+///
+/// _itemSharedWeights:
+///   Map<category, Map<item, List<weightKey>>>
+/// ```
 ///
 /// Firestore persistence rules (CRITICAL):
 /// - Firestore does NOT allow '.', '/', or empty strings in map keys or path segments.

@@ -103,14 +103,14 @@ class _InventoryTableState extends State<InventoryTable> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header row for weights per subItem
-                    Container(
+                    SizedBox(
                       height: rowHeight,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: filteredSubItems.map((subItem) {
                           final weights = widget.weightsForSubItem(subItem).where((w) => w.trim().isNotEmpty).toList();
                           final weightColWidth = ((screenWidth - typeColWidth) / weights.length).clamp(80.0, double.infinity);
-                          return Container(
+                          return SizedBox(
                             width: weightColWidth * weights.length,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -133,7 +133,7 @@ class _InventoryTableState extends State<InventoryTable> {
                     ...filteredSubItems.map((subItem) {
                       final weights = widget.weightsForSubItem(subItem).where((w) => w.trim().isNotEmpty).toList();
                       final weightColWidth = ((screenWidth - typeColWidth) / weights.length).clamp(80.0, double.infinity);
-                      return Container(
+                      return SizedBox(
                         height: rowHeight,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,20 +149,22 @@ class _InventoryTableState extends State<InventoryTable> {
                               );
                               bgColor = value < threshold ? Colors.red.shade100 : Colors.green.shade100;
                             }
-                            return Container(
+                            return SizedBox(
                               width: weightColWidth,
                               height: rowHeight,
-                              padding: const EdgeInsets.all(4),
-                              child: EditableCell(
-                                initialValue: value?.toString() ?? '',
-                                backgroundColor: bgColor,
-                                onValueChanged: (val) async {
-                                  final parsed = val.trim().isEmpty ? null : int.tryParse(val);
-                                  try {
-                                    await widget.setValue(subItem: subItem, weight: weight, value: parsed);
-                                    setState(() {});
-                                  } catch (_) {}
-                                },
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: EditableCell(
+                                  initialValue: value?.toString() ?? '',
+                                  backgroundColor: bgColor,
+                                  onValueChanged: (val) async {
+                                    final parsed = val.trim().isEmpty ? null : int.tryParse(val);
+                                    try {
+                                      await widget.setValue(subItem: subItem, weight: weight, value: parsed);
+                                      setState(() {});
+                                    } catch (_) {}
+                                  },
+                                ),
                               ),
                             );
                           }).toList(),

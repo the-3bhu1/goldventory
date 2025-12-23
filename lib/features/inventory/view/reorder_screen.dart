@@ -86,29 +86,32 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   child: ExpansionTile(
                     title: Text(title),
                     children: [
-                      DataTable(
-                        columns: const [
-                          DataColumn(label: Text('Select')),
-                          DataColumn(label: Text('Sub Item')),
-                          DataColumn(label: Text('Weight')),
-                          DataColumn(label: Text('Pending')),
-                          DataColumn(label: Text('To Order')),
-                        ],
-                        rows: rowsForItem.map((r) {
-                          final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
-                          _selected.putIfAbsent(rowKey, () => false);
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columns: const [
+                            DataColumn(label: Text('Select')),
+                            DataColumn(label: Text('Sub Item')),
+                            DataColumn(label: Text('Weight')),
+                            DataColumn(label: Text('Pending')),
+                            DataColumn(label: Text('To Order')),
+                          ],
+                          rows: rowsForItem.map((r) {
+                            final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
+                            _selected.putIfAbsent(rowKey, () => false);
 
-                          return DataRow(cells: [
-                            DataCell(Checkbox(
-                              value: _selected[rowKey],
-                              onChanged: (v) => setState(() => _selected[rowKey] = v ?? false),
-                            )),
-                            DataCell(Text(r.subItem.replaceAll('_', ' '))),
-                            DataCell(Text('${r.weight} g')),
-                            DataCell(Text(r.pending.toString())),
-                            DataCell(Text(r.toOrder.toString())),
-                          ]);
-                        }).toList(),
+                            return DataRow(cells: [
+                              DataCell(Checkbox(
+                                value: _selected[rowKey],
+                                onChanged: (v) => setState(() => _selected[rowKey] = v ?? false),
+                              )),
+                              DataCell(Text(r.subItem.replaceAll('_', ' '))),
+                              DataCell(Text('${r.weight} g')),
+                              DataCell(Text(r.pending.toString())),
+                              DataCell(Text(r.toOrder.toString())),
+                            ]);
+                          }).toList(),
+                        ),
                       ),
                     ],
                   ),

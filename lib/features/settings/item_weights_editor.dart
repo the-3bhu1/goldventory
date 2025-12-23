@@ -148,8 +148,6 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       // Persist settings to Firestore explicitly
       await thresholdService.save();
 
-      // Notify listeners explicitly after save
-      _vm!.notifyListeners();
     }
 
     if (context.mounted) {
