@@ -167,7 +167,10 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                   final qtyReceived = (item['qtyReceived'] ?? 0) as int;
                   final remaining = (qtyOrdered - qtyReceived);
                   final productId = item['productId'] ?? '';
-                  final weightKey = item['weightKey'] ?? '';
+                  final encoded = item['weightKey'] ?? '';
+                  final parts = encoded.split('|');
+                  final weightKey =
+                      '${parts[0] == '__shared__' ? '' : parts[0].replaceAll('_', '.')}|${parts[1].replaceAll('_', '.')}';
                   // prefer productName stored on the order item, otherwise derive from productId
                   String titleCase(String s) => s.split(' ').map((w) => w.isNotEmpty ? (w[0].toUpperCase() + w.substring(1)) : w).join(' ');
                   final displayNameRaw = (item['productName'] as String?) ?? (productId as String);

@@ -71,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Settings',
                   description: 'App configurations and preferences',
                   icon: Icons.settings,
-                  onTap: () => Helpers.showSnackBar('Settings page coming soon!'),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
                 ),
               ],
             ),

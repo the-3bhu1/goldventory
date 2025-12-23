@@ -5,11 +5,89 @@ class ProductRepository {
   final CollectionReference _db =
       FirebaseFirestore.instance.collection('inventory');
 
+  String _decodeKey(String encoded) =>
+      encoded.replaceAll('_', '.');
+
+  String _encodeKey(String raw) =>
+      raw.trim().replaceAll('.', '_').replaceAll('/', '_');
+
   Future<void> addProduct(ProductModel product) async {
     try {
-      await _db.add(product.toMap());
-    } catch (e) {
+      final safeId = _encodeKey(product.id.isNotEmpty
+          ? product.id
+          : product.name);
+
+      if (safeId.isEmpty) {
+        throw Exception('Invalid product id/name');
+      }
+
+      final raw = product.toMap();
+      assert(
+        raw.isNotEmpty,
+        '❌ product.toMap() returned EMPTY map.\n'
+        'Product name: "${product.name}"\n'
+        'This WILL crash Firestore on iOS.',
+      );
+
+      final Map<String, dynamic> safe = {};
+
+      raw.forEach((key, value) {
+        final encodedKey = _encodeKey(key);
+        assert(
+          encodedKey.isNotEmpty,
+          '❌ Firestore top-level key encoded to empty.\n'
+          'Raw key: "$key"\n'
+          'Product: "${product.name}"\n'
+          'This WILL crash Firestore iOS.',
+        );
+
+        if (value is Map<String, dynamic>) {
+          final nested = <String, dynamic>{};
+          value.forEach((k, v) {
+            assert(
+              k.trim().isNotEmpty,
+              '❌ Invalid nested key detected.\n'
+              'Raw key: "$k"\n'
+              'Parent field: "$encodedKey"\n'
+              'Product: "${product.name}"\n'
+              'This would crash Firestore iOS.',
+            );
+            final nk = _encodeKey(k);
+            assert(
+              nk.isNotEmpty,
+              '❌ Firestore nested key encoded to empty.\n'
+              'Raw key: "$k"\n'
+              'Parent field: "$encodedKey"\n'
+              'Product: "${product.name}"\n'
+              'This WILL crash Firestore iOS.',
+            );
+            nested[nk] = v;
+          });
+          assert(
+            nested.isNotEmpty,
+            '❌ Empty nested map for field "$encodedKey".\n'
+            'This will cause Firestore iOS to crash.\n'
+            'Product: "${product.name}"',
+          );
+          safe[encodedKey] = nested;
+        } else {
+          safe[encodedKey] = value;
+        }
+      });
+
+      assert(
+        safe.isNotEmpty,
+        '❌ Final Firestore payload is EMPTY.\n'
+        'Raw map: $raw\n'
+        'Encoded map: $safe\n'
+        'This WILL crash Firestore iOS.',
+      );
+      await _db.doc(safeId).set(safe);
+      print('Product created safely: $safeId');
+    } catch (e, stack) {
       print('Error adding product: $e');
+      print(stack);
+      rethrow;
     }
   }
 
@@ -17,7 +95,8 @@ class ProductRepository {
     return _db.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        // Flatten nested structure for consistent parsing
+        // LEGACY FLATTENING: kept temporarily for inventory UI compatibility.
+        // Do NOT use for reorder or threshold logic.
         final flatWeights = <String, int>{};
         data.forEach((type, nested) {
           if (nested is Map<String, dynamic>) {
@@ -39,11 +118,13 @@ class ProductRepository {
   }
 
   /// Returns a stream of products where any weight is below threshold.
+  @Deprecated('Legacy API. Do not use. Reorder uses InventorySnapshotService.')
   Stream<List<ProductModel>> getLowStockProducts() {
+    // LEGACY: uses defaultThreshold and flat weights. Not schema-safe.
     return getProducts().map((products) {
+      const int defaultThreshold = 5;
       final lowStock = products.where((product) {
-        return product.weights.entries
-            .any((entry) => entry.value < product.threshold);
+        return product.weights.entries.any((entry) => entry.value < defaultThreshold);
       }).toList();
       return lowStock;
     });
@@ -65,7 +146,12 @@ class ProductRepository {
       final items = List<Map<String, dynamic>>.from(orderData['items'] ?? []);
       for (final item in items) {
         if (item['productId'] != productId) continue;
-        final weightKey = item['weightKey'] as String;
+        final encoded = item['weightKey'] as String;
+        final parts = encoded.split('|');
+        final subItem =
+        parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
+        final weight = _decodeKey(parts[1]);
+        final weightKey = '$subItem|$weight';
         final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
         final qtyReceived = (item['qtyReceived'] ?? 0) as int;
         final int outstanding = qtyOrdered - qtyReceived;
@@ -101,7 +187,12 @@ class ProductRepository {
       for (final item in items) {
         final pid = item['productId'] as String? ?? '';
         if (!result.containsKey(pid)) continue; // skip products we don't care about
-        final weightKey = item['weightKey'] as String;
+        final encoded = item['weightKey'] as String;
+        final parts = encoded.split('|');
+        final subItem =
+        parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
+        final weight = _decodeKey(parts[1]);
+        final weightKey = '$subItem|$weight';
         final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
         final qtyReceived = (item['qtyReceived'] ?? 0) as int;
         final outstanding = qtyOrdered - qtyReceived;
@@ -147,7 +238,8 @@ class ProductRepository {
         final Map<String, DocumentReference> productRefs = {};
         for (final recv in itemsForOrder) {
           final prodId = recv['productId'] as String;
-          productRefs.putIfAbsent(prodId, () => _db.doc(prodId));
+          final safeProdId = _encodeKey(prodId);
+          productRefs.putIfAbsent(safeProdId, () => _db.doc(safeProdId));
         }
 
         final Map<String, DocumentSnapshot> productSnaps = {};
@@ -159,14 +251,15 @@ class ProductRepository {
 
         // Apply writes
         for (final recv in itemsForOrder) {
-          final prodId = recv['productId'] as String;
+          final prodIdRaw = recv['productId'] as String;
+          final prodId = _encodeKey(prodIdRaw);
           final weightKey = recv['weightKey'] as String;
           final qtyNow = (recv['qtyReceivedNow'] as int);
 
           final idx = orderItems.indexWhere((it) =>
-          it['productId'] == prodId && it['weightKey'] == weightKey);
+              it['productId'] == prodIdRaw && it['weightKey'] == weightKey);
           if (idx == -1) {
-            throw Exception('Order $orderId does not contain item $prodId/$weightKey');
+            throw Exception('Order $orderId does not contain item $prodIdRaw/$weightKey');
           }
 
           final item = Map<String, dynamic>.from(orderItems[idx]);
@@ -191,13 +284,11 @@ class ProductRepository {
           String nestedKey;
           if (weightKey.contains('|')) {
             final parts = weightKey.split('|');
-            type = parts[0];
-            nestedKey = parts.sublist(1).join('|');
+            type = _encodeKey(parts[0]);
+            nestedKey = _encodeKey(parts.sublist(1).join('|'));
           } else {
-            // fallback: assume weightKey is nestedKey under a top-level key equal to weightKey
-            final parts = weightKey.split('|');
-            type = parts[0];
-            nestedKey = parts.length > 1 ? parts.sublist(1).join('|') : weightKey;
+            type = _encodeKey(weightKey);
+            nestedKey = _encodeKey(weightKey);
           }
 
           final typeMap = Map<String, dynamic>.from(prodData[type] ?? {});
@@ -282,7 +373,7 @@ class ProductRepository {
 
     // If some quantity remains unallocated, add it to product weights as stock and create an audit event
     if (remaining > 0) {
-      final productRef = _db.doc(productId);
+      final productRef = _db.doc(_encodeKey(productId));
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snap = await tx.get(productRef);
         if (!snap.exists) throw Exception('Product $productId not found');
@@ -292,11 +383,11 @@ class ProductRepository {
         String type; String nestedKey;
         if (weightKey.contains('|')) {
           final parts = weightKey.split('|');
-          type = parts[0];
-          nestedKey = parts.sublist(1).join('|');
+          type = _encodeKey(parts[0]);
+          nestedKey = _encodeKey(parts.sublist(1).join('|'));
         } else {
-          type = weightKey;
-          nestedKey = weightKey;
+          type = _encodeKey(weightKey);
+          nestedKey = _encodeKey(weightKey);
         }
 
         final typeMap = Map<String, dynamic>.from(prodData[type] ?? {});
@@ -422,23 +513,31 @@ class ProductRepository {
   /// This avoids field-path ambiguity and race conditions.
   Future<void> updateWeightQuantityTransaction(
       String id, String weightKey, int newQuantity) async {
-    final docRef = _db.doc(id);
+
+    final safeId = _encodeKey(id);
+    final docRef = _db.doc(safeId);
+
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final snap = await tx.get(docRef);
-      if (!snap.exists) throw Exception('Product $id not found');
-
-      // determine nested target
-      String type; String nestedKey;
-      if (weightKey.contains('|')) {
-        final parts = weightKey.split('|');
-        type = parts[0];
-        nestedKey = parts.sublist(1).join('|');
-      } else {
-        type = weightKey;
-        nestedKey = weightKey;
+      if (!snap.exists) {
+        throw Exception('Product $id not found');
       }
 
-      tx.update(docRef, {'$type.$nestedKey': newQuantity});
+      String type;
+      String nestedKey;
+
+      if (weightKey.contains('|')) {
+        final parts = weightKey.split('|');
+        type = _encodeKey(parts[0].isEmpty ? 'shared' : parts[0]);
+        nestedKey = _encodeKey(parts.sublist(1).join('|'));
+      } else {
+        type = _encodeKey(weightKey);
+        nestedKey = _encodeKey(weightKey);
+      }
+
+      tx.update(docRef, {
+        '$type.$nestedKey': newQuantity,
+      });
     });
   }
 

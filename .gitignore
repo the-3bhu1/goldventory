@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android signing
+android/key.properties
+*.jks
+
+# Firebase / Google services
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Build outputs
+build/
+*.apk
+*.aab

@@ -1,18 +1,15 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:io';
-import 'dart:math';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:goldventory/features/inventory/view_model/inventory_view_model.dart';
+import 'package:goldventory/core/services/inventory_snapshot_service.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
-import 'package:goldventory/data/models/product_model.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:goldventory/app/routes.dart';
+import '../../../core/services/threshold_service.dart';
 
 class ReorderScreen extends StatefulWidget {
   const ReorderScreen({super.key});
@@ -31,9 +28,20 @@ class _ReorderScreenState extends State<ReorderScreen> {
     return '$dd-$mm-$yyyy';
   }
 
+  String _encodeKey(String raw) =>
+      raw.trim().replaceAll('.', '_').replaceAll('/', '_');
+
+  String _encodeWeightKey(String subItem, String weight) {
+    final safeSub =
+    subItem.isEmpty ? '__shared__' : _encodeKey(subItem);
+    final safeWeight = _encodeKey(weight);
+    return '$safeSub|$safeWeight';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<InventoryViewModel>(context, listen: false);
+    final thresholdService = Provider.of<ThresholdService>(context, listen: false);
+    final snapshotService = InventorySnapshotService(thresholdService: thresholdService);
 
     return Scaffold(
       appBar: AppBar(
@@ -51,130 +59,61 @@ class _ReorderScreenState extends State<ReorderScreen> {
       ),
       body: Padding(
         padding: Responsive.screenPadding(context),
-        child: StreamBuilder<List<ProductModel>>(
-          stream: viewModel.lowStockProducts,
+        child: StreamBuilder<List<ReorderRow>>(
+          stream: snapshotService.streamReorderRows(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final products = snapshot.data ?? [];
-            if (products.isEmpty) {
-              return const Center(
-                child: Text(
-                  'All stock levels are healthy!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-              );
+            final rows = snapshot.data ?? [];
+            if (rows.isEmpty) {
+              return const Center(child: Text('All stock levels are healthy!'));
             }
 
-            return ListView.builder(
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final product = products[index];
-                final uiName = product.name
-                    .replaceAll('_', ' ')
-                    .split(' ')
-                    .map((word) => word.isNotEmpty
-                        ? word[0].toUpperCase() + word.substring(1)
-                        : word)
-                    .join(' ');
-                final lowStockWeights = product.weights.entries
-                    .where((e) => e.value < product.threshold)
-                    .toList();
-                // helper to title-case a string
-                String titleCase(String s) => s.split(' ').map((w) => w.isNotEmpty ? (w[0].toUpperCase() + w.substring(1)) : w).join(' ');
+            final Map<String, List<ReorderRow>> grouped = {};
+            for (final r in rows) {
+              final key = '${r.category}|${r.item}';
+              grouped.putIfAbsent(key, () => []).add(r);
+            }
 
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      // On tablet/large screens limit the max width so content is readable
-                      maxWidth: Responsive.isTablet(context) ? 1100 : double.infinity,
-                    ),
-                    child: Card(
-                      color: Color(0xFFC6E6DA),
-                      shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                      elevation: 3,
-                      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                      child: ExpansionTile(
-                        key: PageStorageKey(product.id),
-                        title: Text(
-                          uiName,
-                          style: TextStyle(
-                            fontSize: Responsive.textSize(context, base: 18),
-                            color: Colors.black,
-                          ),
-                        ),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        childrenPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        backgroundColor: Color(0xFFF0F8F3),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: SingleChildScrollView(
-                              key: PageStorageKey('${product.id}_hscroll'),
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                // ensure table takes reasonable width on wide screens
-                                constraints: BoxConstraints(
-                                  minWidth: Responsive.isTablet(context)
-                                      ? MediaQuery.of(context).size.width * 0.7
-                                      : MediaQuery.of(context).size.width * 0.95,
-                                ),
-                                child: DataTable(
-                                  columnSpacing: 28,
-                                  dataRowHeight: Responsive.rowHeight(context, base: 48),
-                                  headingRowHeight: 56,
-                                  columns: const [
-                                    DataColumn(label: Text('Select')),
-                                    DataColumn(label: Text('Type')),
-                                    DataColumn(label: Text('Weight')),
-                                    DataColumn(label: Text('Pending')),
-                                    DataColumn(label: Text('To Order')),
-                                  ],
-                                  rows: lowStockWeights.map((entry) {
-                                    final parts = entry.key.split('|');
-                                    final rawType = parts.length > 1 ? parts[0] : '';
-                                    final rawWeight = parts.length > 1 ? parts[1] : parts[0];
-                                    final type = titleCase(rawType.replaceAll('_', ' '));
-                                    final weight = rawWeight.replaceAll('_', ' ');
-                                    final currentQty = entry.value;
-                                    final threshold = product.threshold;
-                                    // support both stored key formats when resolving pending: prefer exact key, then underscored variant
-                                    final pendingQty = product.pending[entry.key] ?? product.pending[entry.key.replaceAll(' ', '_')] ?? 0;
-                                    final toOrder = max(threshold - (currentQty + pendingQty), 0);
+            return ListView(
+              children: grouped.entries.map((entry) {
+                final rowsForItem = entry.value;
+                final title = rowsForItem.first.item;
 
-                                    final rowKey = '${product.id}::${entry.key}';
-
-                                    _selected.putIfAbsent(rowKey, () => false);
-
-                                    return DataRow(cells: [
-                                      DataCell(
-                                        Checkbox(
-                                          value: _selected[rowKey],
-                                          onChanged: (v) {
-                                            setState(() {
-                                              _selected[rowKey] = v ?? false;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      DataCell(Text(type, style: TextStyle(fontSize: Responsive.textSize(context, base: 14)))),
-                                      DataCell(Text('$weight g', style: TextStyle(fontSize: Responsive.textSize(context, base: 14)))),
-                                      DataCell(Text(pendingQty.toString(), style: TextStyle(fontSize: Responsive.textSize(context, base: 14)))),
-                                      DataCell(Text(toOrder.toString(), style: TextStyle(fontSize: Responsive.textSize(context, base: 14)))),
-                                    ]);
-                                  }).toList(),
-                                ),
-                              ),
-                            ),
-                          ),
+                return Card(
+                  child: ExpansionTile(
+                    title: Text(title),
+                    children: [
+                      DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Select')),
+                          DataColumn(label: Text('Sub Item')),
+                          DataColumn(label: Text('Weight')),
+                          DataColumn(label: Text('Pending')),
+                          DataColumn(label: Text('To Order')),
                         ],
+                        rows: rowsForItem.map((r) {
+                          final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
+                          _selected.putIfAbsent(rowKey, () => false);
+
+                          return DataRow(cells: [
+                            DataCell(Checkbox(
+                              value: _selected[rowKey],
+                              onChanged: (v) => setState(() => _selected[rowKey] = v ?? false),
+                            )),
+                            DataCell(Text(r.subItem.replaceAll('_', ' '))),
+                            DataCell(Text('${r.weight} g')),
+                            DataCell(Text(r.pending.toString())),
+                            DataCell(Text(r.toOrder.toString())),
+                          ]);
+                        }).toList(),
                       ),
-                    ),
+                    ],
                   ),
                 );
-              },
+              }).toList(),
             );
           },
         ),
@@ -183,45 +122,42 @@ class _ReorderScreenState extends State<ReorderScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         onPressed: () async {
           // Build PDF only from rows the user has checked
-          final snapshot = await viewModel.lowStockProducts.first;
-          final products = snapshot;
-
-          // collect selected rows
+          // Use snapshot rows and _selected to build selectedRows
           final List<Map<String, dynamic>> selectedRows = [];
 
-          for (var product in products) {
-            // compute UI display name inside this loop so it's available here
-            final uiName = product.name
-                .replaceAll('_', ' ')
-                .split(' ')
-                .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : word)
-                .join(' ');
-            for (var e in product.weights.entries) {
-              final key = '${product.id}::${e.key}';
-              final selected = _selected[key] ?? false;
-              if (!selected) continue;
+          // Need to get the latest rows from the snapshot service
+          final thresholdService = Provider.of<ThresholdService>(context, listen: false);
+          final snapshotService = InventorySnapshotService(thresholdService: thresholdService);
+          final rows = await snapshotService.streamReorderRows().first;
 
-              final parts = e.key.split('|');
-              final type = parts.length > 1 ? parts[0] : '';
-              final weight = parts.length > 1 ? parts[1] : parts[0];
-              final currentQty = e.value;
-              final threshold = product.threshold;
-              final pendingQty = product.pending[e.key] ?? 0;
-              final toOrder = max(threshold - (currentQty + pendingQty), 0);
+          for (final entry in _selected.entries) {
+            if (!entry.value) continue;
 
-              selectedRows.add({
-                'productId': product.id,
-                'productName': uiName,
-                'type': type,
-                'weight': weight,
-                'weightKey': e.key,
-                'currentQty': currentQty,
-                'threshold': threshold,
-                'pending': pendingQty,
-                'toOrder': toOrder,
-                'rowKey': key,
-              });
-            }
+            final parts = entry.key.split('|');
+            if (parts.length != 4) continue;
+
+            final category = parts[0];
+            final item = parts[1];
+            final subItem = parts[2];
+            final weight = parts[3];
+
+            final row = rows.firstWhere(
+              (r) => r.category == category &&
+                  r.item == item &&
+                  r.subItem == subItem &&
+                  r.weight == weight,
+              orElse: () => throw StateError('Selected row not found'),
+            );
+
+            selectedRows.add({
+              'category': category,
+              'item': item,
+              'subItem': subItem,
+              'weight': weight,
+              'weightKey': _encodeWeightKey(subItem, weight),
+              'toOrder': row.toOrder,
+              'rowKey': entry.key,
+            });
           }
 
           if (selectedRows.isEmpty) {
@@ -229,21 +165,23 @@ class _ReorderScreenState extends State<ReorderScreen> {
             return;
           }
 
-          // Create order in Firestore using repository before generating PDF
-          final repo = Provider.of<InventoryViewModel>(context, listen: false).repo;
+          // Create order in Firestore using snapshot-based payload
           final orderItems = selectedRows.map((r) => {
-            'productId': r['productId'],
+            'category': r['category'],
+            'item': r['item'],
+            'subItem': r['subItem'],
+            'weight': r['weight'],
             'weightKey': r['weightKey'],
             'qtyOrdered': r['toOrder'],
           }).toList();
 
-          String orderId;
-          try {
-            orderId = await repo.createOrder(orderItems);
-          } catch (e) {
-            Helpers.showSnackBar('Order creation failed: $e');
-            return;
-          }
+          final orderDoc = await FirebaseFirestore.instance.collection('orders').add({
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
+            'items': orderItems,
+          });
+
+          final orderId = orderDoc.id;
 
           // Uncheck selected rows now that order placed
           setState(() {
@@ -297,30 +235,30 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   ),
                   pw.SizedBox(height: 16),
 
-                  // group rows by product
-                  for (var productName in selectedRows.map((e) => e['productName'] as String).toSet())
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          productName.replaceAll('_', ' ').toUpperCase(),
-                          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-                        ),
-                        pw.SizedBox(height: 6),
-                        pw.TableHelper.fromTextArray(
-                          headers: ['Type', 'Weight', 'To Order'],
-                          data: selectedRows
-                              .where((r) => r['productName'] == productName)
-                              .map((r) => [
-                            r['type'].toString(),
-                            r['weight'].toString(),
-                            r['toOrder'].toString(),
-                          ])
-                              .toList(),
-                        ),
-                        pw.SizedBox(height: 20),
-                      ],
-                    ),
+          // group rows by category|item
+          for (var groupKey in selectedRows.map((e) => '${e['category']}|${e['item']}').toSet())
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  groupKey.split('|')[1].replaceAll('_', ' ').toUpperCase(),
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height: 6),
+                pw.TableHelper.fromTextArray(
+                  headers: ['Sub Item', 'Weight', 'To Order'],
+                  data: selectedRows
+                      .where((r) => '${r['category']}|${r['item']}' == groupKey)
+                      .map((r) => [
+                        r['subItem'].toString().replaceAll('_', ' '),
+                        r['weight'].toString(),
+                        r['toOrder'].toString(),
+                      ])
+                      .toList(),
+                ),
+                pw.SizedBox(height: 20),
+              ],
+            ),
                 ];
               },
             ),

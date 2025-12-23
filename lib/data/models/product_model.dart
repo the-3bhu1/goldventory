@@ -1,38 +1,48 @@
+/// LEGACY MODEL
+/// ------------
+/// Represents a flattened inventory view (type|weight -> qty).
+/// This model is NOT used for reorder or threshold logic.
+/// Will be replaced by nested inventory models in future.
 class ProductModel {
   final String id;
-  final String name;
-  final Map<String, int> weights;
-  final int threshold;
-  final Map<String, int> pending;
+  final String category;
+  final String item;
+  final String name; // display name
+  final Map<String, int> weights; // weight key -> quantity in stock
+  final Map<String, int> pending; // pending quantities per weight
 
   ProductModel({
     required this.id,
+    required this.category,
+    required this.item,
     required this.name,
     required this.weights,
-    this.threshold = 5,
     Map<String, int>? pending,
   }) : pending = pending ?? const {};
 
   ProductModel copyWith({
     String? id,
+    String? category,
+    String? item,
     String? name,
     Map<String, int>? weights,
-    int? threshold,
     Map<String, int>? pending,
   }) {
     return ProductModel(
       id: id ?? this.id,
+      category: category ?? this.category,
+      item: item ?? this.item,
       name: name ?? this.name,
       weights: weights ?? this.weights,
-      threshold: threshold ?? this.threshold,
       pending: pending ?? this.pending,
     );
   }
 
   Map<String, dynamic> toMap() => {
+    'category': category,
+    'item': item,
     'name': name,
     'weights': weights,
-    'threshold': threshold,
   };
 
   factory ProductModel.fromMap(String id, Map<String, dynamic> map) {
@@ -45,21 +55,18 @@ class ProductModel {
           parsedWeights[key.toString()] = value;
         } else if (value is String) {
           parsedWeights[key.toString()] = int.tryParse(value) ?? 0;
+        } else if (value is num) {
+          parsedWeights[key.toString()] = value.toInt();
         }
       });
     }
 
     return ProductModel(
       id: id,
+      category: map['category'] ?? '',
+      item: map['item'] ?? '',
       name: map['name'] ?? '',
       weights: parsedWeights,
-      threshold: (map['threshold'] is int)
-          ? map['threshold']
-          : int.tryParse(map['threshold']?.toString() ?? '') ?? 5,
     );
-  }
-
-  bool isBelowThreshold() {
-    return weights.values.any((qty) => qty < threshold);
   }
 }
