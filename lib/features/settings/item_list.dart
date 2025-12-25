@@ -6,6 +6,8 @@ import '../../core/widgets/inventory_table.dart';
 import 'sub_item_list.dart';
 import 'item_weights_editor.dart';
 
+enum _ItemMenuAction { rename, delete }
+
 /// Shows items for a selected category and allows creating / editing / deleting items
 /// Uses SettingsViewModel (local buffer) instead of writing directly to GlobalState.
 class ItemList extends StatefulWidget {
@@ -80,139 +82,201 @@ class _ItemListState extends State<ItemList> {
                         final item = itemKeys[idx];
                         final subItems = vm.subItemsFor(widget.category, item);
                         final subCount = subItems.length;
-                        final displaySubtitle = subCount == 1
-                            ? '1 sub-item'
-                            : '$subCount sub-items';
+                        final displaySubtitle =
+                            subCount == 1 ? '1 sub-item' : '$subCount sub-items';
 
-                        return ListTile(
-                          title: Text(item),
-                          subtitle: Text(displaySubtitle),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Rename item',
-                                onPressed: () async {
-                                  final controller = TextEditingController(text: item);
-                                  final newName = await showDialog<String?>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Rename item'),
-                                      content: TextField(
-                                        controller: controller,
-                                        autofocus: true,
-                                        decoration: const InputDecoration(hintText: 'Item name'),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.of(ctx).pop(null),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-                                          child: const Text('Save'),
-                                        ),
-                                      ],
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.titleMedium,
                                     ),
-                                  );
-
-                                  if (newName != null && newName.isNotEmpty && newName != item) {
-                                    vm.renameItem(widget.category, item, newName);
-                                    Helpers.showSnackBar('Item renamed');
-                                  }
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.table_chart),
-                                tooltip: 'Edit thresholds',
-                                onPressed: () {
-                                  final subItems = vm.subItemsFor(widget.category, item);
-
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => InventoryTable(
-                                        title: '$item – Thresholds',
-                                        category: widget.category,
-                                        item: item,
-                                        mode: InventoryTableMode.threshold,
-                                        subItems: subItems,
-                                        weightsForSubItem: (subItem) {
-                                          return vm.weightsForSubItem(
-                                            widget.category,
-                                            item,
-                                            subItem,
+                                  ),
+                                  PopupMenuButton<_ItemMenuAction>(
+                                    icon: const Icon(Icons.more_vert),
+                                    onSelected: (action) async {
+                                      switch (action) {
+                                        case _ItemMenuAction.rename:
+                                          final controller =
+                                              TextEditingController(text: item);
+                                          final newName = await showDialog<String?>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Rename item'),
+                                              content: TextField(
+                                                controller: controller,
+                                                autofocus: true,
+                                                decoration:
+                                                    const InputDecoration(hintText: 'Item name'),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(ctx).pop(null),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () => Navigator.of(ctx)
+                                                      .pop(controller.text.trim()),
+                                                  child: const Text('Save'),
+                                                ),
+                                              ],
+                                            ),
                                           );
-                                        },
-                                        getValue: ({required subItem, required weight}) {
-                                          return vm.thresholdFor(
+
+                                          if (newName != null &&
+                                              newName.isNotEmpty &&
+                                              newName != item) {
+                                            vm.renameItem(widget.category, item, newName);
+                                            Helpers.showSnackBar('Item renamed');
+                                          }
+                                          break;
+
+                                        case _ItemMenuAction.delete:
+                                          final confirmed = await showDialog<bool?>(
+                                            context: context,
+                                            builder: (dctx) => AlertDialog(
+                                              title: Text('Delete "$item"?'),
+                                              content: const Text(
+                                                  'This will remove the item from the local changes.'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(dctx).pop(false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(dctx).pop(true),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                          if (confirmed == true) {
+                                            vm.deleteItem(widget.category, item);
+                                            Helpers.showSnackBar('Item removed');
+                                          }
+                                          break;
+                                      }
+                                    },
+                                    itemBuilder: (_) => const [
+                                      PopupMenuItem(
+                                        value: _ItemMenuAction.rename,
+                                        child: Text('Rename'),
+                                      ),
+                                      PopupMenuDivider(),
+                                      PopupMenuItem(
+                                        value: _ItemMenuAction.delete,
+                                        child: Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                displaySubtitle,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.grey),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.table_chart),
+                                    tooltip: 'Edit thresholds',
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => InventoryTable(
+                                            title: '$item – Thresholds',
                                             category: widget.category,
                                             item: item,
-                                            subItem: subItem,
-                                            weight: weight,
-                                          );
-                                        },
-                                        setValue: ({required subItem, required weight, required int? value}) {
-                                          if (value == null) return Future.value();
-                                          vm.setThreshold(
-                                            category: widget.category,
-                                            item: item,
-                                            subItem: subItem,
-                                            weight: weight,
-                                            threshold: value,
-                                          );
-                                          return Future.value();
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                },
+                                            mode: InventoryTableMode.threshold,
+                                            subItems: subItems,
+                                            weightsForSubItem: (subItem) {
+                                              return vm.weightsForSubItem(
+                                                widget.category,
+                                                item,
+                                                subItem,
+                                              );
+                                            },
+                                            getValue: ({required subItem, required weight}) {
+                                              return vm.thresholdFor(
+                                                category: widget.category,
+                                                item: item,
+                                                subItem: subItem,
+                                                weight: weight,
+                                              );
+                                            },
+                                            setValue:
+                                                ({required subItem, required weight, required int? value}) {
+                                              if (value == null) return Future.value();
+                                              vm.setThreshold(
+                                                category: widget.category,
+                                                item: item,
+                                                subItem: subItem,
+                                                weight: weight,
+                                                threshold: value,
+                                              );
+                                              return Future.value();
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.view_column),
+                                    tooltip: 'Edit weights',
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ChangeNotifierProvider.value(
+                                            value: vm,
+                                            child: ItemWeightsEditor(
+                                              category: widget.category,
+                                              item: item,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.view_list),
+                                    tooltip: 'Sub-items',
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ChangeNotifierProvider.value(
+                                            value: vm,
+                                            child: SubItemList(
+                                              category: widget.category,
+                                              item: item,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.view_column),
-                                tooltip: 'Edit columns',
-                                onPressed: () {
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => ChangeNotifierProvider.value(
-                                      value: vm,
-                                      child: ItemWeightsEditor(category: widget.category, item: item),
-                                    ),
-                                  ));
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.view_list),
-                                tooltip: 'Sub-items',
-                                onPressed: () {
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => ChangeNotifierProvider.value(
-                                      value: vm,
-                                      child: SubItemList(category: widget.category, item: item),
-                                    ),
-                                  ));
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Delete item',
-                                onPressed: () async {
-                                  final confirmed = await showDialog<bool?>(
-                                    context: context,
-                                    builder: (dctx) => AlertDialog(
-                                      title: Text('Delete "$item"?'),
-                                      content: const Text('This will remove the item from the local changes.'),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
-                                        ElevatedButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirmed == true) {
-                                    vm.deleteItem(widget.category, item);
-                                    Helpers.showSnackBar('Item removed');
-                                  }
-                                },
-                              ),
+                              const Divider(height: 16),
                             ],
                           ),
                         );

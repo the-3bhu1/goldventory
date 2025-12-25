@@ -59,28 +59,19 @@ class SettingsPage extends StatelessWidget {
       child: Consumer<SettingsViewModel>(builder: (context, vm, _) {
         final gs = context.watch<GlobalState>();
         return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
+          appBar: AppBar(title: const Text('Categories')),
           body: Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: gs.isLoading
-                      ? _SettingsSkeleton()
-                      : vm.categories.isEmpty
-                          ? Center(
-                              child: Text(
-                                'No categories yet. Tap + to create one.',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            )
-                          : const CategoryList(),
-                ),
-              ],
-            ),
+            child: gs.isLoading
+                ? _SettingsSkeleton()
+                : vm.categories.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No categories yet. Tap + to create one.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      )
+                    : const CategoryList(),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showCreateCategoryDialog(context),

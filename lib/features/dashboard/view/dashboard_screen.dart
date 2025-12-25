@@ -68,8 +68,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: () => Navigator.pushNamed(context, AppRoutes.reorder),
                 ),
                 DashboardCard(
-                  title: 'Settings',
-                  description: 'App configurations and preferences',
+                  title: 'Thresholds',
+                  description: 'Set thresholds for each item individually',
                   icon: Icons.settings,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
                 ),

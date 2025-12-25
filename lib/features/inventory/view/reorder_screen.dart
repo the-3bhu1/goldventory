@@ -78,13 +78,16 @@ class _ReorderScreenState extends State<ReorderScreen> {
             }
 
             return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               children: grouped.entries.map((entry) {
                 final rowsForItem = entry.value;
                 final title = rowsForItem.first.item;
 
                 return Card(
+                  color: const Color(0xFFC6E6DA),
                   child: ExpansionTile(
                     title: Text(title),
+                    backgroundColor: const Color(0xFFF0F8F3),
                     children: [
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -93,8 +96,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
                             DataColumn(label: Text('Select')),
                             DataColumn(label: Text('Sub Item')),
                             DataColumn(label: Text('Weight')),
-                            DataColumn(label: Text('Pending')),
                             DataColumn(label: Text('To Order')),
+                            DataColumn(label: Text('Pending')),
                           ],
                           rows: rowsForItem.map((r) {
                             final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
@@ -107,8 +110,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
                               )),
                               DataCell(Text(r.subItem.replaceAll('_', ' '))),
                               DataCell(Text('${r.weight} g')),
-                              DataCell(Text(r.pending.toString())),
                               DataCell(Text(r.toOrder.toString())),
+                              DataCell(Text(r.pending.toString())),
                             ]);
                           }).toList(),
                         ),

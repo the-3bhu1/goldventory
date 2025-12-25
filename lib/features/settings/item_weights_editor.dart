@@ -207,7 +207,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit columns — ${widget.item}'),
+        title: Text('${widget.item} - Add weights'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
