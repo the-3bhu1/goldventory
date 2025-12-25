@@ -2,6 +2,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product_model.dart';
 
 class ProductRepository {
+  Map<String, dynamic> _sanitizeNestedMap(Map<String, dynamic> input) {
+    final result = <String, dynamic>{};
+
+    for (final entry in input.entries) {
+      final key = entry.key;
+
+      // Block forbidden structural keys
+      if (key == 'shared' || key.startsWith('__')) continue;
+
+      final value = entry.value;
+
+      if (value is Map<String, dynamic>) {
+        final cleaned = _sanitizeNestedMap(value);
+        if (cleaned.isNotEmpty) {
+          result[key] = cleaned;
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  }
+
   final CollectionReference _db =
       FirebaseFirestore.instance.collection('inventory');
 
@@ -22,67 +46,12 @@ class ProductRepository {
       }
 
       final raw = product.toMap();
-      assert(
-        raw.isNotEmpty,
-        '❌ product.toMap() returned EMPTY map.\n'
-        'Product name: "${product.name}"\n'
-        'This WILL crash Firestore on iOS.',
-      );
+      final sanitizedRaw = _sanitizeNestedMap(raw);
+      if (sanitizedRaw.isEmpty) {
+        throw Exception('Sanitized product map is empty for product ${product.name}');
+      }
 
-      final Map<String, dynamic> safe = {};
-
-      raw.forEach((key, value) {
-        final encodedKey = _encodeKey(key);
-        assert(
-          encodedKey.isNotEmpty,
-          '❌ Firestore top-level key encoded to empty.\n'
-          'Raw key: "$key"\n'
-          'Product: "${product.name}"\n'
-          'This WILL crash Firestore iOS.',
-        );
-
-        if (value is Map<String, dynamic>) {
-          final nested = <String, dynamic>{};
-          value.forEach((k, v) {
-            assert(
-              k.trim().isNotEmpty,
-              '❌ Invalid nested key detected.\n'
-              'Raw key: "$k"\n'
-              'Parent field: "$encodedKey"\n'
-              'Product: "${product.name}"\n'
-              'This would crash Firestore iOS.',
-            );
-            final nk = _encodeKey(k);
-            assert(
-              nk.isNotEmpty,
-              '❌ Firestore nested key encoded to empty.\n'
-              'Raw key: "$k"\n'
-              'Parent field: "$encodedKey"\n'
-              'Product: "${product.name}"\n'
-              'This WILL crash Firestore iOS.',
-            );
-            nested[nk] = v;
-          });
-          assert(
-            nested.isNotEmpty,
-            '❌ Empty nested map for field "$encodedKey".\n'
-            'This will cause Firestore iOS to crash.\n'
-            'Product: "${product.name}"',
-          );
-          safe[encodedKey] = nested;
-        } else {
-          safe[encodedKey] = value;
-        }
-      });
-
-      assert(
-        safe.isNotEmpty,
-        '❌ Final Firestore payload is EMPTY.\n'
-        'Raw map: $raw\n'
-        'Encoded map: $safe\n'
-        'This WILL crash Firestore iOS.',
-      );
-      await _db.doc(safeId).set(safe);
+      await _db.doc(safeId).set(sanitizedRaw, SetOptions(merge: true));
       print('Product created safely: $safeId');
     } catch (e, stack) {
       print('Error adding product: $e');
@@ -492,7 +461,8 @@ class ProductRepository {
         }
       }
 
-      await docRef.set(processed, SetOptions(merge: true));
+      final cleaned = _sanitizeNestedMap(processed);
+      await docRef.set(cleaned, SetOptions(merge: true));
       print('Product $id successfully updated with data: $processed');
     } catch (e, stack) {
       print('Error updating product $id: $e');

@@ -92,6 +92,39 @@ class _ItemListState extends State<ItemList> {
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit),
+                                tooltip: 'Rename item',
+                                onPressed: () async {
+                                  final controller = TextEditingController(text: item);
+                                  final newName = await showDialog<String?>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Rename item'),
+                                      content: TextField(
+                                        controller: controller,
+                                        autofocus: true,
+                                        decoration: const InputDecoration(hintText: 'Item name'),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(null),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+                                          child: const Text('Save'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (newName != null && newName.isNotEmpty && newName != item) {
+                                    vm.renameItem(widget.category, item, newName);
+                                    Helpers.showSnackBar('Item renamed');
+                                  }
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.table_chart),
                                 tooltip: 'Edit thresholds',
                                 onPressed: () {
                                   final subItems = vm.subItemsFor(widget.category, item);

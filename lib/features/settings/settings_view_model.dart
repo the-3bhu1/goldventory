@@ -6,6 +6,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum WeightMode { shared, perSubItem }
 const String kSharedSubItem = 'shared';
 
+void _assertNotShared(String subItem) {
+  assert(subItem != kSharedSubItem,
+  'BUG: `shared` must never be treated as a real subItem');
+}
+
 String _encodeKey(String raw) {
   // Firestore map keys cannot contain '.', '/', or be empty
   // Matches ThresholdService._safeKey logic
@@ -51,30 +56,35 @@ class SettingsViewModel extends ChangeNotifier {
   // -----------------
   /// Load a deep copy of thresholds from global state into local buffer.
   Future<void> load() async {
-    // Ensure global thresholds are up to date
-    await globalState.loadThresholds();
-
-    _local.clear();
-    final source = globalState.thresholds.asNestedMap();
-
-    source.forEach((cat, items) {
-      final Map<String, Map<String, Map<String, int>>> itemCopy = {};
-      items.forEach((item, subMap) {
-        final Map<String, Map<String, int>> subCopy = {};
-        subMap.forEach((subItem, weights) {
-          final Map<String, int> weightCopy = {};
-          weights.forEach((w, val) {
-            weightCopy[w] = val;
-          });
-          subCopy[subItem] = weightCopy;
-        });
-        itemCopy[item] = subCopy;
-      });
-      _local[cat] = itemCopy;
+    Future.microtask(() {
+      globalState.setLoading(true);
     });
 
-    _dirty = false;
-    notifyListeners();
+    try {
+      await globalState.loadThresholds();
+
+      _local.clear();
+      final source = globalState.thresholds.asNestedMap();
+
+      source.forEach((cat, items) {
+        final Map<String, Map<String, Map<String, int>>> itemCopy = {};
+        items.forEach((item, subMap) {
+          final Map<String, Map<String, int>> subCopy = {};
+          subMap.forEach((subItem, weights) {
+            subCopy[subItem] = Map<String, int>.from(weights);
+          });
+          itemCopy[item] = subCopy;
+        });
+        _local[cat] = itemCopy;
+      });
+
+      _dirty = false;
+    } finally {
+      Future.microtask(() {
+        globalState.setLoading(false);
+      });
+      notifyListeners();
+    }
   }
 
   /// Discard local edits and reload from global
@@ -101,7 +111,12 @@ class SettingsViewModel extends ChangeNotifier {
   List<String> subItemsFor(String category, String item) {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return [];
-    final keys = itemMap.keys.toList()..sort();
+
+    final keys = itemMap.keys
+        .where((k) => k != kSharedSubItem && !k.startsWith('__'))
+        .toList();
+
+    keys.sort(_subItemComparator);
     return keys;
   }
 
@@ -129,7 +144,14 @@ class SettingsViewModel extends ChangeNotifier {
     if (itemMap == null) return [];
     final weights = itemMap[subItem];
     if (weights == null) return [];
-    final list = weights.keys.toList()..sort();
+
+    final list = weights.keys.cast<String>().toList();
+    list.sort((a, b) {
+      final ia = int.tryParse(a);
+      final ib = int.tryParse(b);
+      if (ia != null && ib != null) return ia.compareTo(ib);
+      return a.compareTo(b);
+    });
     return list;
   }
 
@@ -177,7 +199,7 @@ class SettingsViewModel extends ChangeNotifier {
     final docRef = db.collection('inventory').doc(safeCat);
 
     // Firestore does NOT allow empty map keys
-    final safeSubItem = subItem.isEmpty ? kSharedSubItem : subItem;
+    final safeSubItem = _encodeKey(subItem);
 
     // Build nested merge payload
     Map<String, dynamic> payload;
@@ -279,34 +301,84 @@ class SettingsViewModel extends ChangeNotifier {
     unawaited(_commit());
   }
 
-  /// Remove a category locally
-  void removeCategory(String category) {
-    _local.remove(category);
+  /// Private helper for deleting a node from a parent map and triggering state updates
+  void _deleteNode({
+    required Map<String, dynamic> parent,
+    required String key,
+  }) {
+    if (!parent.containsKey(key)) return;
+
+    parent.remove(key);
     _dirty = true;
     notifyListeners();
-
     unawaited(_commit());
+  }
+
+  /// Remove a category locally
+  void removeCategory(String category) {
+    _deleteNode(parent: _local, key: category);
   }
 
   /// Rename a category while preserving all nested items, subItems and thresholds
   void renameCategory(String oldName, String newName) {
+    _renameNode(
+      parent: _local,
+      oldName: oldName,
+      newName: newName,
+    );
+  }
+
+  /// Rename an item within a category while preserving all subItems and thresholds
+  void renameItem(String category, String oldName, String newName) {
+    final catMap = _local[category];
+    if (catMap == null) return;
+
+    _renameNode(
+      parent: catMap,
+      oldName: oldName,
+      newName: newName,
+    );
+  }
+
+  /// Rename a subItem within an item, preserving weights and thresholds
+  void renameSubItem(
+    String category,
+    String item,
+    String oldName,
+    String newName,
+  ) {
+    _assertNotShared(oldName);
+
+    final itemMap = _local[category]?[item];
+    if (itemMap == null) return;
+
+    _renameNode(
+      parent: itemMap,
+      oldName: oldName,
+      newName: newName,
+    );
+  }
+
+  /// Private helper for renaming a key in a nested map and triggering state updates
+  void _renameNode({
+    required Map<String, dynamic> parent,
+    required String oldName,
+    required String newName,
+  }) {
     assert(oldName.trim().isNotEmpty);
     assert(newName.trim().isNotEmpty);
     if (oldName == newName) return;
 
-    final existing = _local[oldName];
+    final existing = parent[oldName];
     if (existing == null) return;
 
-    // Prevent accidental overwrite
-    assert(!_local.containsKey(newName), 'Target category already exists');
+    assert(!parent.containsKey(newName), 'Target already exists');
 
-    _local[newName] = existing;
-    _local.remove(oldName);
+    parent[newName] = existing;
+    parent.remove(oldName);
 
     _dirty = true;
     notifyListeners();
-
-    // persist immediately
     unawaited(_commit());
   }
 
@@ -334,6 +406,7 @@ class SettingsViewModel extends ChangeNotifier {
     assert(category.trim().isNotEmpty);
     assert(item.trim().isNotEmpty);
     assert(subItem.trim().isNotEmpty);
+    _assertNotShared(subItem);
 
     _ensureCategoryItemSub(category, item, subItem);
     _dirty = true;
@@ -353,12 +426,14 @@ class SettingsViewModel extends ChangeNotifier {
 
   /// Remove an item and all its subItems
   void deleteItem(String category, String item) {
-    _local[category]?.remove(item);
-    if (_local[category]?.isEmpty ?? false) _local.remove(category);
-    _dirty = true;
-    notifyListeners();
+    final catMap = _local[category];
+    if (catMap == null) return;
 
-    unawaited(_commit());
+    _deleteNode(parent: catMap, key: item);
+
+    if (catMap.isEmpty) {
+      _local.remove(category);
+    }
   }
 
   void clearWeightsForItem(String category, String item) {
@@ -374,13 +449,13 @@ class SettingsViewModel extends ChangeNotifier {
 
   /// Remove only a subItem under an item
   void deleteSubItem(String category, String item, String subItem) {
+    _assertNotShared(subItem);
+
     final itemMap = _local[category]?[item];
     if (itemMap == null) return;
 
-    // Remove locally
-    itemMap.remove(subItem);
+    _deleteNode(parent: itemMap, key: subItem);
 
-    // Cleanup parents
     if (itemMap.isEmpty) {
       _local[category]?.remove(item);
     }
@@ -388,24 +463,18 @@ class SettingsViewModel extends ChangeNotifier {
       _local.remove(category);
     }
 
-    _dirty = true;
-    notifyListeners();
-
-    // Cascade delete in inventory
     final safeCat = _encodeKey(category);
     final safeItem = _encodeKey(item);
-    final safeSub = subItem.isEmpty ? kSharedSubItem : _encodeKey(subItem);
+    final safeSub = _encodeKey(subItem);
 
     FirebaseFirestore.instance
         .collection('inventory')
         .doc(safeCat)
         .set({
-      safeItem: {
-        safeSub: FieldValue.delete(),
-      }
-    }, SetOptions(merge: true));
-
-    unawaited(_commit());
+          safeItem: {
+            safeSub: FieldValue.delete(),
+          }
+        }, SetOptions(merge: true));
   }
 
   /// Set item-level shared weights (delegates to ThresholdService via GlobalState)
@@ -460,6 +529,7 @@ class SettingsViewModel extends ChangeNotifier {
     assert(category.trim().isNotEmpty);
     assert(item.trim().isNotEmpty);
     assert(subItem.trim().isNotEmpty);
+    _assertNotShared(subItem);
 
     // Ensure local structure exists
     _ensureCategoryItemSub(category, item, subItem);
@@ -480,6 +550,29 @@ class SettingsViewModel extends ChangeNotifier {
 
     // Persist immediately so thresholds unlock without navigation
     unawaited(_commit());
+  }
+
+  List<String> sharedWeightsForItem(String category, String item) {
+    final itemMap = _local[category]?[item];
+    if (itemMap == null) return [];
+    final shared = itemMap[kSharedSubItem];
+    if (shared == null) return [];
+    final list = shared.keys.toList()..sort();
+    return list;
+  }
+
+  Map<String, List<String>> weightsForItemBySubItem(String category, String item) {
+    final itemMap = _local[category]?[item];
+    if (itemMap == null) return {};
+    final result = <String, List<String>>{};
+    itemMap.forEach((subItem, weights) {
+      if (subItem == kSharedSubItem) return;
+      final list = weights.keys.toList()..sort();
+      if (list.isNotEmpty) {
+        result[subItem] = list;
+      }
+    });
+    return result;
   }
 
   // -----------------
@@ -518,12 +611,11 @@ class SettingsViewModel extends ChangeNotifier {
       });
     });
 
-
-
     // Write local nested map into global state
     _local.forEach((cat, items) {
       items.forEach((item, subMap) {
         subMap.forEach((subItem, weights) {
+          if (subItem == kSharedSubItem) return;
           weights.forEach((w, val) {
             globalState.setThresholdFor(category: cat, item: item, subItem: subItem, weight: w, threshold: val);
           });
@@ -537,4 +629,17 @@ class SettingsViewModel extends ChangeNotifier {
     _dirty = false;
     notifyListeners();
   }
+}
+
+int _subItemComparator(String a, String b) {
+  final reg = RegExp(r'^(\d+)');
+  final ma = reg.firstMatch(a);
+  final mb = reg.firstMatch(b);
+
+  if (ma != null && mb != null) {
+    return int.parse(ma.group(1)!).compareTo(int.parse(mb.group(1)!));
+  }
+  if (ma != null) return -1;
+  if (mb != null) return 1;
+  return a.compareTo(b);
 }

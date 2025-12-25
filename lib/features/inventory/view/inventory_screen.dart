@@ -53,7 +53,10 @@ class InventoryScreen extends StatelessWidget {
   const InventoryScreen({super.key});
 
   List<String> _extractSubItems(Map<String, dynamic> itemMap) {
-    return itemMap.keys.where((k) => !k.startsWith('__')).toList()..sort();
+    return itemMap.keys
+        .where((k) => k != 'shared' && !k.startsWith('__'))
+        .toList()
+      ..sort();
   }
 
   Future<void> _setInventoryQuantity({
@@ -154,7 +157,7 @@ class InventoryScreen extends StatelessWidget {
                                         final m = itemMap[subItem];
                                         if (m is Map<String, dynamic>) {
                                           return m.keys
-                                              .where((w) => !w.startsWith('__'))
+                                              .where((w) => w != 'shared' && !w.startsWith('__'))
                                               .cast<String>()
                                               .toList()
                                             ..sort();
@@ -163,6 +166,7 @@ class InventoryScreen extends StatelessWidget {
                                       },
                                       getValue: ({required subItem, required weight}) {
                                         final m = itemMap[subItem];
+                                        assert(weight != 'shared', 'InventoryTable tried to read forbidden weight key: shared');
                                         if (m is Map && m[weight] is num) {
                                           return (m[weight] as num).toInt();
                                         }

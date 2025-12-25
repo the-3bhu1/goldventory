@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import 'package:goldventory/features/settings/settings_view_model.dart';
-import 'category_editor.dart';
 import 'item_list.dart';
 
 /// A reusable CategoryList widget that displays categories and provides
@@ -32,9 +31,28 @@ class CategoryList extends StatelessWidget {
                 icon: const Icon(Icons.edit),
                 tooltip: 'Rename',
                 onPressed: () async {
+                  final ctrl = TextEditingController(text: cat);
+
                   final newName = await showDialog<String?>(
                     context: context,
-                    builder: (dctx) => CategoryEditor(category: cat),
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Rename category'),
+                      content: TextField(
+                        controller: ctrl,
+                        decoration: const InputDecoration(hintText: 'Category name'),
+                        autofocus: true,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(null),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+                          child: const Text('Rename'),
+                        ),
+                      ],
+                    ),
                   );
 
                   if (newName != null && newName.isNotEmpty && newName != cat) {

@@ -25,24 +25,37 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
   @override
   void initState() {
     super.initState();
-    try {
-      _vm = Provider.of<SettingsViewModel>(context, listen: false);
-    } catch (_) {
-      _vm = null;
+
+    _vm = Provider.of<SettingsViewModel>(context, listen: false);
+
+    // Restore persisted mode (if already chosen)
+    _mode = _vm!.weightModeFor(widget.category, widget.item);
+
+    // Restore persisted weights from Settings (SOURCE OF TRUTH)
+    final shared = _vm!.sharedWeightsForItem(widget.category, widget.item);
+    final perSub = _vm!.weightsForItemBySubItem(widget.category, widget.item);
+
+    if (shared.isNotEmpty) {
+      _mode ??= WeightMode.shared;
+      _sharedWeights = List<String>.from(shared);
+      _sharedWeights.sort((a, b) => num.parse(a).compareTo(num.parse(b)));
+    } else if (perSub.isNotEmpty) {
+      _mode ??= WeightMode.perSubItem;
+      _perSubItemWeights
+        ..clear()
+        ..addAll(perSub);
+      _perSubItemWeights.forEach((_, list) {
+        list.sort((a, b) => num.parse(a).compareTo(num.parse(b)));
+      });
     }
 
-    _mode = _vm?.weightModeFor(widget.category, widget.item);
-
-    if (_mode == WeightMode.shared) {
-      _sharedWeights = List<String>.from(
-        _vm!.globalState.thresholds
-            .getItemSharedWeights(widget.category, widget.item),
-      );
-    } else if (_mode == WeightMode.perSubItem) {
-      final subItems = _vm!.settingsSubItemsFor(widget.category, widget.item);
-      for (final sub in subItems) {
-        _perSubItemWeights[sub] =
-            _vm!.weightsForSubItem(widget.category, widget.item, sub);
+    // Ensure all subItems appear even if empty
+    if (_mode == WeightMode.perSubItem) {
+      final subs = List<String>.from(
+        _vm!.settingsSubItemsFor(widget.category, widget.item),
+      )..sort(_naturalSubItemSort);
+      for (final s in subs) {
+        _perSubItemWeights.putIfAbsent(s, () => []);
       }
     }
   }
@@ -181,6 +194,15 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     return false;
   }
 
+  int _naturalSubItemSort(String a, String b) {
+    final aNum = int.tryParse(a.split(' ').first);
+    final bNum = int.tryParse(b.split(' ').first);
+    if (aNum != null && bNum != null) return aNum.compareTo(bNum);
+    if (aNum != null) return -1;
+    if (bNum != null) return 1;
+    return a.compareTo(b);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -267,9 +289,12 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
             ] else if (_mode == WeightMode.perSubItem) ...[
               Expanded(
                 child: ListView(
-                  children: _perSubItemWeights.keys.map((subItem) {
+                  children: (_perSubItemWeights.keys.toList()
+                    ..sort(_naturalSubItemSort))
+                      .map((subItem) {
                     final ctrl = TextEditingController();
                     final weights = _perSubItemWeights[subItem] ?? [];
+
                     return ExpansionTile(
                       title: Text(subItem),
                       children: [

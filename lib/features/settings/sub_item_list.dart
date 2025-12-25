@@ -49,7 +49,10 @@ class SubItemList extends StatelessWidget {
   }
 
   Future<void> _renameSubItem(
-      BuildContext context, SettingsViewModel vm, String oldName) async {
+    BuildContext context,
+    SettingsViewModel vm,
+    String oldName,
+  ) async {
     final ctrl = TextEditingController(text: oldName);
 
     final result = await showDialog<String?>(
@@ -75,22 +78,7 @@ class SubItemList extends StatelessWidget {
     );
 
     if (result != null && result.isNotEmpty && result != oldName) {
-      // Move thresholds from old → new
-      final weights = vm.weightsFor(category, item, subItem: oldName);
-
-      vm.createSubItem(category, item, result);
-
-      weights.forEach((w, val) {
-        vm.setThreshold(
-          category: category,
-          item: item,
-          subItem: result,
-          weight: w,
-          threshold: val,
-        );
-      });
-
-      vm.deleteSubItem(category, item, oldName);
+      vm.renameSubItem(category, item, oldName, result);
 
       if (context.mounted) {
         Helpers.showSnackBar('Sub-item renamed');

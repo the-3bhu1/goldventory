@@ -13,6 +13,13 @@ import 'dart:async';
 /// - Never creates or mutates threshold configuration
 /// - Thresholds are consumed read-only by UI / reorder logic
 class InventoryViewModel extends ChangeNotifier {
+  void _assertNotShared(String key) {
+    assert(
+      key != 'shared' && !key.startsWith('__'),
+      'BUG: inventory must never contain shared or internal keys: $key',
+    );
+  }
+
   /// Check if a given quantity is below the specified threshold.
   /// Threshold lookup must be done by the caller.
   bool isBelowThreshold({
@@ -42,6 +49,7 @@ class InventoryViewModel extends ChangeNotifier {
   /// update orders and product weights atomically. After allocation we notify
   /// listeners so UI streams refresh.
   Future<void> handleManualIncrease(String productId, String weightKey, int delta) async {
+    _assertNotShared(weightKey);
     if (delta <= 0) return;
 
     try {
@@ -76,6 +84,9 @@ class InventoryViewModel extends ChangeNotifier {
     required String name,
     required Map<String, int> weights,
   }) async {
+    for (final key in weights.keys) {
+      _assertNotShared(key);
+    }
     await _repo.addProduct(
       ProductModel(
         id: '',
@@ -88,6 +99,9 @@ class InventoryViewModel extends ChangeNotifier {
   }
 
   Future<void> updateQuantity(String id, Map<String, int> weights) async {
+    for (final key in weights.keys) {
+      _assertNotShared(key);
+    }
     await _repo.updateProduct(id, {'weights': weights});
     notifyListeners();
   }
