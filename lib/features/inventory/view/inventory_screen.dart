@@ -2,7 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../../../core/widgets/inventory_table.dart';
+import '../../../global/global_state.dart';
 
 class _InventorySkeleton extends StatelessWidget {
   const _InventorySkeleton();
@@ -78,20 +80,42 @@ class InventoryScreen extends StatelessWidget {
     }
   }
 
+  String? _getMissingWeightsMessage({
+    required List<String> subItems,
+    required List<String> Function(String) weightsForSubItem,
+  }) {
+    if (subItems.isEmpty) return null;
+
+    final missing = <String>[];
+    for (final s in subItems) {
+      final weights = weightsForSubItem(s);
+      if (weights.isEmpty) {
+        missing.add(s);
+      }
+    }
+
+    if (missing.isEmpty) return null;
+
+    if (missing.length == subItems.length) {
+      return 'Please add weights for ${subItems.join(', ')}';
+    }
+
+    return 'Please add weights for ${missing.join(', ')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('inventory')
-            .snapshots(includeMetadataChanges: true),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const _InventorySkeleton();
+      body: Consumer<GlobalState>(
+        builder: (context, globalState, child) {
+          final thresholdsMap = globalState.thresholds.asNestedMap();
+          
+          if (globalState.isLoading) {
+             return const _InventorySkeleton();
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (thresholdsMap.isEmpty) {
             return Center(
               child: Text(
                 'No inventory yet. Add categories and items in Settings.',
@@ -101,20 +125,13 @@ class InventoryScreen extends StatelessWidget {
             );
           }
 
-          if (snapshot.data!.metadata.isFromCache) {
-            return const _InventorySkeleton();
-          }
-
-          final categoryDocs = snapshot.data!.docs;
+          final categories = thresholdsMap.keys.toList();
 
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
-            children: categoryDocs.map((catDoc) {
-              final category = catDoc.id;
-              final data = Map<String, dynamic>.from(catDoc.data() as Map);
-
-              // Items are top-level keys under category
-              final items = data.keys.where((k) => !k.startsWith('__')).toList()..sort();
+            children: categories.map((category) {
+              final itemMap = thresholdsMap[category]!;
+              final items = itemMap.keys.where((k) => !k.startsWith('__')).toList();
 
               return Card(
                 color: const Color(0xFFC6E6DA),
@@ -144,43 +161,86 @@ class InventoryScreen extends StatelessWidget {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) {
-                                    final itemMap = data[item] as Map<String, dynamic>;
-                                    final subItems = _extractSubItems(itemMap);
+                                    // REFACTOR: Use GlobalState as source of truth for SubItems too
+                                    // This fixes "No subitems configured" when inventory is empty
+                                    final subItems = itemMap[item]!.keys
+                                        .where((k) => k != 'shared' && !k.startsWith('__'))
+                                        .toList();
+                                        // ..sort(); // Insertion order maintained by Map
 
-                                    return InventoryTable(
-                                      title: '$item Inventory',
-                                      category: category,
-                                      item: item,
-                                      mode: InventoryTableMode.inventory,
+                                    final missingMsg = _getMissingWeightsMessage(
                                       subItems: subItems,
                                       weightsForSubItem: (subItem) {
-                                        final m = itemMap[subItem];
-                                        if (m is Map<String, dynamic>) {
-                                          return m.keys
-                                              .where((w) => w != 'shared' && !w.startsWith('__'))
-                                              .cast<String>()
-                                              .toList()
-                                            ..sort();
-                                        }
-                                        return <String>[];
-                                      },
-                                      getValue: ({required subItem, required weight}) {
-                                        final m = itemMap[subItem];
-                                        assert(weight != 'shared', 'InventoryTable tried to read forbidden weight key: shared');
-                                        if (m is Map && m[weight] is num) {
-                                          return (m[weight] as num).toInt();
-                                        }
-                                        return null;
-                                      },
-                                      setValue: ({required subItem, required weight, required value}) async {
-                                        await _setInventoryQuantity(
-                                          category: category,
-                                          item: item,
-                                          subItem: subItem,
-                                          weight: weight,
-                                          value: value,
+                                        return globalState.getWeightsFor(
+                                          category: category, 
+                                          item: item, 
+                                          subItem: subItem
                                         );
                                       },
+                                    );
+
+                                    if (missingMsg != null) {
+                                      return Scaffold(
+                                        appBar: AppBar(title: Text('$item Inventory')),
+                                        body: Center(
+                                          child: Text(
+                                            missingMsg,
+                                            style: Theme.of(context).textTheme.bodyLarge,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    
+                                    final isSharedWeights = globalState.getWeightModeFor(
+                                      category: category, 
+                                      item: item
+                                    ) == true;
+
+                                    return StreamBuilder<DocumentSnapshot>(
+                                      stream: FirebaseFirestore.instance.collection('inventory').doc(category).snapshots(),
+                                      builder: (context, snapshot) {
+                                        if (!snapshot.hasData) {
+                                          return const Scaffold(
+                                            body: Center(child: CircularProgressIndicator()),
+                                          );
+                                        }
+
+                                        final freshData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+                                        final freshItemMap = (freshData[item] as Map<String, dynamic>?) ?? {};
+
+                                        return InventoryTable(
+                                          title: '$item Inventory',
+                                          category: category,
+                                          item: item,
+                                          mode: InventoryTableMode.inventory,
+                                          subItems: subItems,
+                                          isSharedWeights: isSharedWeights,
+                                          weightsForSubItem: (subItem) {
+                                            return globalState.getWeightsFor(
+                                              category: category, 
+                                              item: item, 
+                                              subItem: subItem
+                                            );
+                                          },
+                                          getValue: ({required subItem, required weight}) {
+                                            final m = freshItemMap[subItem];
+                                            if (m is Map && m[weight] is num) {
+                                              return (m[weight] as num).toInt();
+                                            }
+                                            return null;
+                                          },
+                                          setValue: ({required subItem, required weight, required value}) async {
+                                            await _setInventoryQuantity(
+                                              category: category,
+                                              item: item,
+                                              subItem: subItem,
+                                              weight: weight,
+                                              value: value,
+                                            );
+                                          },
+                                        );
+                                      }
                                     );
                                   },
                                 ),

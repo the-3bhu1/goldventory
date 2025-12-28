@@ -19,19 +19,6 @@ class ItemList extends StatefulWidget {
 }
 
 class _ItemListState extends State<ItemList> {
-  late SettingsViewModel _vm;
-
-  @override
-  void initState() {
-    super.initState();
-    // Obtain VM (caller should have provided it). If not loaded, trigger load.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _vm = Provider.of<SettingsViewModel>(context, listen: false);
-      if (_vm.categories.isEmpty) {
-        await _vm.load();
-      }
-    });
-  }
 
   Future<void> _showCreateItemDialog(BuildContext context) async {
     final controller = TextEditingController();
@@ -56,7 +43,7 @@ class _ItemListState extends State<ItemList> {
     if (result != null && result.isNotEmpty) {
       final item = result;
       // create item locally in VM buffer
-      vm.createItem(widget.category, item, threshold: vm.defaultThreshold());
+      vm.createItem(widget.category, item);
       Helpers.showSnackBar('Item created');
     }
   }
@@ -197,44 +184,17 @@ class _ItemListState extends State<ItemList> {
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.table_chart),
-                                    tooltip: 'Edit thresholds',
+                                    icon: const Icon(Icons.view_list),
+                                    tooltip: 'Sub-items',
                                     onPressed: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => InventoryTable(
-                                            title: '$item – Thresholds',
-                                            category: widget.category,
-                                            item: item,
-                                            mode: InventoryTableMode.threshold,
-                                            subItems: subItems,
-                                            weightsForSubItem: (subItem) {
-                                              return vm.weightsForSubItem(
-                                                widget.category,
-                                                item,
-                                                subItem,
-                                              );
-                                            },
-                                            getValue: ({required subItem, required weight}) {
-                                              return vm.thresholdFor(
-                                                category: widget.category,
-                                                item: item,
-                                                subItem: subItem,
-                                                weight: weight,
-                                              );
-                                            },
-                                            setValue:
-                                                ({required subItem, required weight, required int? value}) {
-                                              if (value == null) return Future.value();
-                                              vm.setThreshold(
-                                                category: widget.category,
-                                                item: item,
-                                                subItem: subItem,
-                                                weight: weight,
-                                                threshold: value,
-                                              );
-                                              return Future.value();
-                                            },
+                                          builder: (_) => ChangeNotifierProvider.value(
+                                            value: vm,
+                                            child: SubItemList(
+                                              category: widget.category,
+                                              item: item,
+                                            ),
                                           ),
                                         ),
                                       );
@@ -258,16 +218,99 @@ class _ItemListState extends State<ItemList> {
                                     },
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.view_list),
-                                    tooltip: 'Sub-items',
+                                    icon: const Icon(Icons.table_chart),
+                                    tooltip: 'Edit thresholds',
                                     onPressed: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) => ChangeNotifierProvider.value(
                                             value: vm,
-                                            child: SubItemList(
-                                              category: widget.category,
-                                              item: item,
+                                            child: Builder(
+                                              builder: (ctx) {
+                                                final watchVm = ctx.watch<SettingsViewModel>();
+                                                final mode =
+                                                    watchVm.weightModeFor(widget.category, item);
+                                                final subItems =
+                                                    watchVm.subItemsFor(widget.category, item);
+
+                                                // SHARED MODE → single table
+                                                if (mode == WeightMode.shared) {
+                                                  final bySub = watchVm
+                                                      .weightsForItemBySubItem(widget.category, item);
+
+                                                  List<String> shared = const [];
+                                                  for (final s in subItems) {
+                                                    final w = bySub[s];
+                                                    if (w != null && w.isNotEmpty) {
+                                                      shared = w;
+                                                      break;
+                                                    }
+                                                  }
+
+                                                  return InventoryTable(
+                                                    title: '$item – Thresholds',
+                                                    category: widget.category,
+                                                    item: item,
+                                                    mode: InventoryTableMode.threshold,
+                                                    subItems: subItems,
+                                                    isSharedWeights: true,
+                                                    weightsForSubItem: (_) => shared,
+                                                    getValue: ({required subItem, required weight}) {
+                                                      return watchVm.thresholdFor(
+                                                        category: widget.category,
+                                                        item: item,
+                                                        subItem: subItem,
+                                                        weight: weight,
+                                                      );
+                                                    },
+                                                    setValue: ({required subItem, required weight, required int? value}) {
+                                                      if (value == null) return Future.value();
+                                                      watchVm.setThreshold(
+                                                        category: widget.category,
+                                                        item: item,
+                                                        subItem: subItem,
+                                                        weight: weight,
+                                                        threshold: value,
+                                                      );
+                                                      return Future.value();
+                                                    },
+                                                  );
+                                                }
+
+                                                // PER‑SUB‑ITEM MODE → alternating-row table handled by InventoryTable
+                                                return InventoryTable(
+                                                  title: '$item – Thresholds',
+                                                  category: widget.category,
+                                                  item: item,
+                                                  mode: InventoryTableMode.threshold,
+                                                  subItems: subItems,
+                                                  weightsForSubItem: (sub) =>
+                                                      watchVm.weightsForSubItem(
+                                                        widget.category,
+                                                        item,
+                                                        sub,
+                                                      ),
+                                                  getValue: ({required subItem, required weight}) {
+                                                    return watchVm.thresholdFor(
+                                                      category: widget.category,
+                                                      item: item,
+                                                      subItem: subItem,
+                                                      weight: weight,
+                                                    );
+                                                  },
+                                                  setValue: ({required subItem, required weight, required int? value}) {
+                                                    if (value == null) return Future.value();
+                                                    watchVm.setThreshold(
+                                                      category: widget.category,
+                                                      item: item,
+                                                      subItem: subItem,
+                                                      weight: weight,
+                                                      threshold: value,
+                                                    );
+                                                    return Future.value();
+                                                  },
+                                                );
+                                              },
                                             ),
                                           ),
                                         ),

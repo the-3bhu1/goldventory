@@ -21,13 +21,9 @@ void main() async {
           create: (context) => InventoryViewModel(context),
         ),
         ChangeNotifierProvider(
-          create: (_) => GlobalState(),
+          create: (_) => GlobalState()..loadThresholds(),
         ),
-        ChangeNotifierProvider(
-          create: (context) => SettingsViewModel(
-            globalState: context.read<GlobalState>(),
-          ),
-        ),
+        // SettingsViewModel is scoped to SettingsPage, removed from global providers
         Provider(
           create: (_) => ThresholdService(),
         ),

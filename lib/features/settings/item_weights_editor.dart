@@ -14,54 +14,29 @@ class ItemWeightsEditor extends StatefulWidget {
 }
 
 class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
-  SettingsViewModel? _vm;
+  /// Safely parses a Firestore-safe numeric key (e.g. '2_5' -> 2.5)
+  num _safeNum(String raw) {
+    // Firestore-safe keys replace '.' with '_'
+    final normalized = raw.replaceAll('_', '.');
+    return num.tryParse(normalized) ?? double.infinity;
+  }
   List<String> _sharedWeights = [];
   final Map<String, List<String>> _perSubItemWeights = {};
+  final Map<String, TextEditingController> _perSubCtrls = {};
   final TextEditingController _addCtrl = TextEditingController();
   WeightMode? _mode;
-
-  // This screen MUST restore state from SettingsViewModel.
-  // Firestore is the source of truth. UI never clears persisted data.
-  @override
-  void initState() {
-    super.initState();
-
-    _vm = Provider.of<SettingsViewModel>(context, listen: false);
-
-    // Restore persisted mode (if already chosen)
-    _mode = _vm!.weightModeFor(widget.category, widget.item);
-
-    // Restore persisted weights from Settings (SOURCE OF TRUTH)
-    final shared = _vm!.sharedWeightsForItem(widget.category, widget.item);
-    final perSub = _vm!.weightsForItemBySubItem(widget.category, widget.item);
-
-    if (shared.isNotEmpty) {
-      _mode ??= WeightMode.shared;
-      _sharedWeights = List<String>.from(shared);
-      _sharedWeights.sort((a, b) => num.parse(a).compareTo(num.parse(b)));
-    } else if (perSub.isNotEmpty) {
-      _mode ??= WeightMode.perSubItem;
-      _perSubItemWeights
-        ..clear()
-        ..addAll(perSub);
-      _perSubItemWeights.forEach((_, list) {
-        list.sort((a, b) => num.parse(a).compareTo(num.parse(b)));
-      });
-    }
-
-    // Ensure all subItems appear even if empty
-    if (_mode == WeightMode.perSubItem) {
-      final subs = List<String>.from(
-        _vm!.settingsSubItemsFor(widget.category, widget.item),
-      )..sort(_naturalSubItemSort);
-      for (final s in subs) {
-        _perSubItemWeights.putIfAbsent(s, () => []);
-      }
-    }
-  }
+  
+  // Dirty check state
+  bool _hydrated = false;
+  WeightMode? _initialMode;
+  List<String> _initialSharedWeights = [];
+  Map<String, List<String>> _initialPerSubItemWeights = {};
 
   @override
   void dispose() {
+    for (final c in _perSubCtrls.values) {
+      c.dispose();
+    }
     _addCtrl.dispose();
     super.dispose();
   }
@@ -99,68 +74,27 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       );
       return;
     }
-    if (_vm != null) {
-      // Persist weight mode (shared / per-subitem)
-      _vm!.setWeightMode(widget.category, widget.item, _mode ?? WeightMode.shared);
+    // vm is defined in build, so we get it from context here
+    final vm = context.read<SettingsViewModel>();
+    // Persist weight mode (shared / per-subitem)
+    vm.setWeightMode(widget.category, widget.item, _mode!);
 
-      final thresholdService = _vm!.globalState.thresholds;
-
-      if (_mode == WeightMode.shared) {
-        // Persist shared weights list
-        _vm!.setItemSharedWeights(widget.category, widget.item, _sharedWeights);
-
-        // IMPORTANT:
-        // Settings is the source of truth.
-        // Inventory is derived.
-        // Thresholds unlock immediately after save.
-        // Sub-items MUST come from Settings (source of truth)
-        final subItems = _vm!.settingsSubItemsFor(widget.category, widget.item);
-        if (subItems.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please add sub-items before configuring weights'),
-            ),
-          );
-          return;
-        }
-
-        for (final sub in subItems) {
-          for (final w in _sharedWeights) {
-            thresholdService.setThreshold(
-              category: widget.category,
-              item: widget.item,
-              subItem: sub,
-              weight: w,
-              threshold: thresholdService.defaultThreshold,
-            );
-          }
-        }
-      } else if (_mode == WeightMode.perSubItem) {
-        // Persist per-sub-item weights into Settings (new method assumed)
-        _perSubItemWeights.forEach((subItem, weights) {
-          _vm!.setItemWeightsForSubItem(widget.category, widget.item, subItem, weights);
-        });
-
-        // IMPORTANT:
-        // Settings is the source of truth.
-        // Inventory is derived.
-        // Thresholds unlock immediately after save.
-        _perSubItemWeights.forEach((subItem, weights) {
-          for (final w in weights) {
-            thresholdService.setThreshold(
-              category: widget.category,
-              item: widget.item,
-              subItem: subItem,
-              weight: w,
-              threshold: thresholdService.defaultThreshold,
-            );
-          }
-        });
+    if (_mode == WeightMode.shared) {
+      // Persist shared weights by applying the same list to ALL sub-items
+      final subs = vm.settingsSubItemsFor(widget.category, widget.item);
+      for (final sub in subs) {
+        vm.setItemWeightsForSubItem(
+          widget.category,
+          widget.item,
+          sub,
+          _sharedWeights,
+        );
       }
-
-      // Persist settings to Firestore explicitly
-      await thresholdService.save();
-
+    } else if (_mode == WeightMode.perSubItem) {
+      // Persist per-sub-item weights ONLY (no thresholds)
+      _perSubItemWeights.forEach((subItem, weights) {
+        vm.setItemWeightsForSubItem(widget.category, widget.item, subItem, weights);
+      });
     }
 
     if (context.mounted) {
@@ -169,21 +103,42 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     }
   }
 
-  Future<bool> _confirmModeSwitch() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Change weight mode?'),
-            content: const Text('Switching mode will remove existing weights.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-              ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
-            ],
-          ),
-        ) ?? false;
+  bool _areListsEqual(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final sortedA = [...a]; // ..sort();
+    final sortedB = [...b]; // ..sort();
+    for (int i = 0; i < a.length; i++) {
+      if (sortedA[i] != sortedB[i]) return false;
+    }
+    return true;
+  }
+
+  bool get _isDirty {
+    if (!_hydrated) return false;
+    if (_mode != _initialMode) return true;
+
+    if (_mode == WeightMode.shared) {
+      return !_areListsEqual(_sharedWeights, _initialSharedWeights);
+    }
+    
+    if (_mode == WeightMode.perSubItem) {
+      if (_perSubItemWeights.length != _initialPerSubItemWeights.length) return true;
+      for (final key in _perSubItemWeights.keys) {
+        if (!_initialPerSubItemWeights.containsKey(key)) return true;
+        if (!_areListsEqual(
+            _perSubItemWeights[key]!, _initialPerSubItemWeights[key]!)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    return false;
   }
 
   bool get _canSave {
+    if (!_isDirty) return false;
+
     if (_mode == WeightMode.shared) {
       return _sharedWeights.isNotEmpty;
     }
@@ -205,6 +160,58 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<SettingsViewModel>();
+
+    _mode ??= vm.weightModeFor(widget.category, widget.item);
+
+    final subs = vm.subItemsFor(widget.category, widget.item);
+    final bySub = vm.weightsForItemBySubItem(widget.category, widget.item);
+
+    // SHARED MODE — hydrate once
+    if (_mode == WeightMode.shared && _sharedWeights.isEmpty) {
+      List<String> resolved = const [];
+      for (final s in subs) {
+        final w = bySub[s];
+        if (w != null && w.isNotEmpty) {
+          resolved = w;
+          break;
+        }
+      }
+      _sharedWeights = [...resolved]
+        ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+    }
+
+    // PER-SUB-ITEM MODE — hydrate once
+    if (_mode == WeightMode.perSubItem && _perSubItemWeights.isEmpty) {
+      for (final s in subs) {
+        final w = bySub[s] ?? <String>[];
+        _perSubItemWeights[s] = [...w]
+          ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+
+        _perSubCtrls.putIfAbsent(s, () => TextEditingController());
+      }
+    }
+
+    // Capture initial state ONCE
+    if (!_hydrated) {
+      _initialMode = _mode;
+      
+      // We must copy the lists carefully
+      _initialSharedWeights = [..._sharedWeights];
+      
+      _initialPerSubItemWeights = {};
+      _perSubItemWeights.forEach((k, v) {
+        _initialPerSubItemWeights[k] = [...v];
+      });
+      
+      // If we successfully loaded something (or even if empty start), mark hydrated
+      // Wait, if _mode is null initially?
+      // If _mode is null, we are just starting fresh.
+      // But _mode is assigned above: _mode ??= vm.weightModeFor...
+      
+      _hydrated = true;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.item} - Add weights'),
@@ -225,42 +232,30 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                 ChoiceChip(
                   label: const Text('Shared weights'),
                   selected: _mode == WeightMode.shared,
-                  onSelected: (v) async {
-                    if (_vm?.weightModeFor(widget.category, widget.item) != null) return;
-                    if (_mode != WeightMode.shared && (_perSubItemWeights.values.any((w) => w.isNotEmpty))) {
-                      final ok = await _confirmModeSwitch();
-                      if (!ok) return;
-                      _sharedWeights.clear();
-                      _perSubItemWeights.clear();
-                      _vm?.clearWeightsForItem(widget.category, widget.item);
-                    }
-                    setState(() {
-                      _mode = WeightMode.shared;
-                    });
-                  },
+                  onSelected: _mode == null
+                      ? (_) {
+                          final vm = context.read<SettingsViewModel>();
+                          vm.setWeightMode(widget.category, widget.item, WeightMode.shared);
+                          setState(() {
+                            _mode = WeightMode.shared;
+                          });
+                        }
+                      : null,
+                  disabledColor: Colors.grey.shade300,
                 ),
                 ChoiceChip(
                   label: const Text('Per sub-item'),
                   selected: _mode == WeightMode.perSubItem,
-                  onSelected: (v) async {
-                    if (_vm?.weightModeFor(widget.category, widget.item) != null) return;
-                    if (_mode == WeightMode.shared && _sharedWeights.isNotEmpty) {
-                      final ok = await _confirmModeSwitch();
-                      if (!ok) return;
-                      _sharedWeights.clear();
-                      _perSubItemWeights.clear();
-                      _vm?.clearWeightsForItem(widget.category, widget.item);
-                    }
-                    setState(() {
-                      _mode = WeightMode.perSubItem;
-                      if (_perSubItemWeights.isEmpty) {
-                        final subItems = _vm?.settingsSubItemsFor(widget.category, widget.item) ?? [];
-                        for (final sub in subItems) {
-                          _perSubItemWeights[sub] = [];
+                  onSelected: _mode == null
+                      ? (_) {
+                          final vm = context.read<SettingsViewModel>();
+                          vm.setWeightMode(widget.category, widget.item, WeightMode.perSubItem);
+                          setState(() {
+                            _mode = WeightMode.perSubItem;
+                          });
                         }
-                      }
-                    });
-                  },
+                      : null,
+                  disabledColor: Colors.grey.shade300,
                 ),
               ],
             ),
@@ -290,9 +285,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
               Expanded(
                 child: ListView(
                   children: (_perSubItemWeights.keys.toList()
-                    ..sort(_naturalSubItemSort))
+                  // ..sort(_naturalSubItemSort)) // Removed sorting
+                  )
                       .map((subItem) {
-                    final ctrl = TextEditingController();
+                    final ctrl = _perSubCtrls[subItem]!;
                     final weights = _perSubItemWeights[subItem] ?? [];
 
                     return ExpansionTile(
@@ -325,7 +321,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                           child: Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: weights.map((w) => Chip(label: Text(w))).toList(),
+                            children: (() {
+                              final sorted = [...weights]; // ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+                              return sorted.map((w) => Chip(label: Text(w))).toList();
+                            })(),
                           ),
                         ),
                       ],

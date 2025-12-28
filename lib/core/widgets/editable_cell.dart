@@ -2,23 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
 
 class EditableCell extends StatefulWidget {
-  final String initialValue;
-  final ValueChanged<String> onValueChanged;
+  final int? initialValue;
+  final Future<void> Function(int? value) onValueSaved;
+  final Color Function(int? value) colorResolver;
+
   final TextAlign textAlign;
   final TextInputType keyboardType;
   final double width;
   final double height;
-  final Color? backgroundColor;
 
   const EditableCell({
     super.key,
     required this.initialValue,
-    required this.onValueChanged,
+    required this.onValueSaved,
+    required this.colorResolver,
     this.textAlign = TextAlign.center,
     this.keyboardType = TextInputType.number,
     this.width = 100,
     this.height = 48,
-    this.backgroundColor,
   });
 
   @override
@@ -26,34 +27,71 @@ class EditableCell extends StatefulWidget {
 }
 
 class _EditableCellState extends State<EditableCell> {
-
   late TextEditingController _controller;
-  bool _isEditing = false;
+  late FocusNode _focusNode;
+
+  int? _currentValue;
+  late Color _backgroundColor;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
+    _currentValue = widget.initialValue;
+    _backgroundColor = widget.colorResolver(_currentValue);
+
+    _controller = TextEditingController(
+      text: _currentValue?.toString() ?? '',
+    );
+
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _commit();
+    }
+  }
+
+  void _commit() {
+    final parsed =
+        _controller.text.trim().isEmpty ? null : int.tryParse(_controller.text);
+
+    if (parsed == _currentValue) return;
+
+    setState(() {
+      _currentValue = parsed;
+      _backgroundColor = widget.colorResolver(parsed);
+    });
+
+    widget.onValueSaved(parsed);
   }
 
   @override
   void didUpdateWidget(covariant EditableCell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialValue != oldWidget.initialValue &&
-        widget.initialValue != _controller.text) {
-      _controller.text = widget.initialValue;
+    if (oldWidget.initialValue != widget.initialValue &&
+        widget.initialValue != _currentValue) {
+      _currentValue = widget.initialValue;
+      _controller.text = widget.initialValue?.toString() ?? '';
+      _backgroundColor = widget.colorResolver(_currentValue);
     }
   }
 
-  Future<void> _save() async {
-    setState(() => _isEditing = false);
-    try {
-      widget.onValueChanged(_controller.text.trim());
-    } catch (_) {}
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
   }
 
   void _startEditing() {
-    setState(() => _isEditing = true);
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _backgroundColor = Colors.white;
+    });
+    _focusNode.requestFocus();
     _controller.selection = TextSelection.fromPosition(
       TextPosition(offset: _controller.text.length),
     );
@@ -64,9 +102,9 @@ class _EditableCellState extends State<EditableCell> {
     final cellWidth = Responsive.cellWidth(context, base: widget.width);
     final cellHeight = Responsive.rowHeight(context, base: widget.height);
     final fontSize = Responsive.textSize(context, base: 16);
-    final horizontalPadding = Responsive.isTablet(context) ? 8.0 : 4.0;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: _startEditing,
       child: Container(
         width: cellWidth,
@@ -74,36 +112,19 @@ class _EditableCellState extends State<EditableCell> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade400),
-          color: widget.backgroundColor ?? Colors.grey.shade100,
+          color: _backgroundColor,
         ),
-        child: _isEditing
-            ? Focus(
-                onFocusChange: (hasFocus) {
-                  if (!hasFocus) _save();
-                },
-                child: TextField(
-                  controller: _controller,
-                  autofocus: true,
-                  keyboardType: widget.keyboardType,
-                  textAlign: widget.textAlign,
-                  onSubmitted: (_) => _save(),
-                  onChanged: (v) {
-                    try {
-                      widget.onValueChanged(v.trim());
-                    } catch (_) {}
-                  },
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  ),
-                ),
-              )
-            : Text(
-                _controller.text,
-                textAlign: widget.textAlign,
-                style: TextStyle(fontSize: fontSize),
-              ),
+        child: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          textAlign: widget.textAlign,
+          keyboardType: widget.keyboardType,
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            isDense: true,
+          ),
+          style: TextStyle(fontSize: fontSize),
+        ),
       ),
     );
   }

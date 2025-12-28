@@ -14,7 +14,7 @@ class ReorderRow {
   final String weight;
   final int quantity;
   final int pending;
-  final int threshold;
+  final int? threshold;
   final int toOrder;
 
   ReorderRow({
@@ -81,10 +81,11 @@ class InventorySnapshotService {
 
             final Map<String, dynamic> weights = Map<String, dynamic>.from(subVal);
             weights.forEach((weightKey, qtyVal) {
+              if (qtyVal == null) return;
               if (qtyVal is! int) return;
+              final int quantity = qtyVal;
 
               final weight = _decodeKey(weightKey);
-              final quantity = qtyVal;
               final fullKey = '$subItem|$weight';
 
               final threshold = thresholdService.getThresholdFor(
@@ -95,6 +96,12 @@ class InventorySnapshotService {
               );
 
               final pendingQty = pending[fullKey] ?? 0;
+
+              // Rule: if threshold is missing OR inventory is missing, skip reorder logic
+              if (threshold == null) {
+                return;
+              }
+
               final toOrder = threshold - (quantity + pendingQty);
 
               if (toOrder > 0) {

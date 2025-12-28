@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:goldventory/core/widgets/editable_cell.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
-
-import '../services/threshold_service.dart';
+import 'package:goldventory/global/global_state.dart';
 
 enum InventoryTableMode {
   inventory,
   threshold,
 }
-
 
 class InventoryTable extends StatefulWidget {
   final String title;
@@ -34,22 +33,22 @@ const InventoryTable({
     required this.subItems,
     required this.weightsForSubItem,
     this.embed = false,
+    this.isSharedWeights = false,
   });
+
+  final bool isSharedWeights;
 
   @override
   State<InventoryTable> createState() => _InventoryTableState();
 }
 
 class _InventoryTableState extends State<InventoryTable> {
-  // Bulk update dialog state
-  int _bulkDelta = 0;
-  String? _selectedSubItem;
-
   @override
   Widget build(BuildContext context) {
     const double cellWidth = 88;
 
-    final filteredSubItems = widget.subItems.where((s) => s.trim().isNotEmpty).toList();
+    List<String> filteredSubItems = widget.subItems.where((s) => s.trim().isNotEmpty).toList();
+
     if (filteredSubItems.isEmpty) {
       return Scaffold(
         appBar: widget.embed ? null : AppBar(title: Text(widget.title)),
@@ -68,157 +67,277 @@ class _InventoryTableState extends State<InventoryTable> {
     final typeColWidthRaw = (screenWidth / 4) * 1.2;
     final typeColWidth = (typeColWidthRaw.clamp(70.0, screenWidth));
 
-    final tableContent = SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 96),
-      scrollDirection: Axis.vertical,
+    final bool isThreshold = widget.mode == InventoryTableMode.threshold;
+
+    final tableContent = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+        scrollDirection: Axis.vertical,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: IntrinsicWidth(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ...filteredSubItems.expand((subItem) => [
-                      // "Type" label row
-                      Container(
-                        width: typeColWidth,
-                        height: rowHeight,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          border: Border(
-                            bottom: BorderSide(color: Colors.grey.shade300),
+                if (widget.isSharedWeights && filteredSubItems.isNotEmpty) ...[
+                  // --- SHARED WEIGHTS MODE: Single Header ---
+                  (() {
+                    // Use weights from the first sub-item as the shared schema
+                    final firstSub = filteredSubItems.first;
+                    final weights = widget.weightsForSubItem(firstSub)
+                        .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
+                        .toList();
+  
+                    return Row(
+                      children: [
+                        Container(
+                          width: typeColWidth,
+                          height: rowHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            border: Border(
+                              right: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                              bottom: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Type',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: fontSize,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Type',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: fontSize,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ...weights.map((w) => Container(
+                          width: cellWidth,
+                          height: rowHeight,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            border: Border(
+                              right: BorderSide(color: Colors.grey.shade300),
+                              bottom: BorderSide(color: Colors.grey.shade300),
+                            ),
                           ),
-                        ),
-                      ),
-
-                      // Sub-item name row (aligned with values row)
-                      Container(
-                        width: typeColWidth,
-                        height: rowHeight,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          border: Border(
-                            bottom: BorderSide(color: Colors.grey.shade300),
+                          child: Text(
+                            w,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: fontSize,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          subItem,
-                          style: TextStyle(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ]),
-                  ],
-                ),
-                SizedBox(
-                  width: widget.subItems
-                          .map((s) => widget.weightsForSubItem(s).length)
-                          .fold<int>(0, (a, b) => a > b ? a : b) * 96.0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ...filteredSubItems.map((subItem) {
-                        final weights = widget
-                            .weightsForSubItem(subItem)
-                            .where((w) => w.trim().isNotEmpty && !w.startsWith('__') && w != 'shared')
-                            .toList();
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: rowHeight,
-                              child: Row(
-                                children: weights.map((weight) {
-                                  return Container(
-                                    width: cellWidth,
-                                    height: rowHeight,
-                                    alignment: Alignment.center,
-                                    margin: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      weight,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: fontSize,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                        )),
+                      ],
+                    );
+                  })(),
+                ],
+                
+                ...filteredSubItems.expand((subItem) {
+                  // Determine weights for this sub-item
+                  final weights = widget.weightsForSubItem(subItem)
+                      .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
+                      .toList();
+  
+                  if (weights.isEmpty) {
+                     return <Widget>[
+                       Row(
+                         children: [
+                           Container(
+                             width: typeColWidth,
+                             height: rowHeight,
+                             padding: const EdgeInsets.symmetric(horizontal: 12),
+                             decoration: BoxDecoration(
+                               color: Colors.grey.shade200,
+                               border: Border(
+                                 right: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                                 bottom: BorderSide(color: Colors.grey.shade300),
+                               ),
+                             ),
+                             alignment: Alignment.centerLeft,
+                             child: Text(
+                               'Type',
+                               style: TextStyle(
+                                 fontWeight: FontWeight.w600,
+                                 fontSize: fontSize,
+                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
+                               ),
+                             ),
+                           ),
+                           // Message Cell
+                           Expanded(
+                             child: Container(
+                               height: rowHeight,
+                               alignment: Alignment.centerLeft,
+                               padding: const EdgeInsets.only(left: 12),
+                               decoration: BoxDecoration(
+                                 color: Colors.white,
+                                 border: Border(
+                                   bottom: BorderSide(color: Colors.grey.shade300),
+                                 ),
+                               ),
+                               child: Text(
+                                 'Add weights for ${subItem == 'shared' ? 'Shared' : subItem}',
+                                 style: TextStyle(
+                                   fontStyle: FontStyle.italic,
+                                   color: Colors.grey.shade600,
+                                   fontSize: fontSize,
+                                 ),
+                               ),
+                             ),
+                           ),
+                         ],
+                       ),
+                       // Value Row (Placeholder or just skip?)
+                       // The user said "I need the same message... also all similar messages should propagate"
+                       // In Inventory mode, usually we might just show the message row.
+                       // Let's mirror the "Header" style row above but with message.
+                     ];
+                  }
+  
+                  // If NOT shared weights, we repeat the header for EVERY sub-item
+                  final showHeader = !widget.isSharedWeights;
+  
+                  return [
+                    if (showHeader)
+                      Row(
+                        children: [
+                          Container(
+                            width: typeColWidth,
+                            height: rowHeight,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              border: Border(
+                                right: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                                bottom: BorderSide(color: Colors.grey.shade300),
                               ),
                             ),
-                            SizedBox(
-                              height: rowHeight,
-                              child: Row(
-                                children: weights.map((weight) {
-                                  final value = widget.getValue(subItem: subItem, weight: weight);
-                                  Color bgColor = Colors.grey.shade100;
-                                  if (widget.mode == InventoryTableMode.threshold) {
-                                    bgColor = Theme.of(context).primaryColor.withValues(alpha: 0.12);
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Type',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: fontSize,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          ...weights.map((w) => Container(
+                            width: cellWidth,
+                            height: rowHeight,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              border: Border(
+                                right: BorderSide(color: Colors.grey.shade300),
+                                bottom: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            child: Text(
+                              w,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: fontSize,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )),
+                        ],
+                      ),
+  
+                    // The Value Row
+                    Row(
+                      children: [
+                        Container(
+                          width: typeColWidth,
+                          height: rowHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            border: Border(
+                              right: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                              bottom: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            subItem == 'shared' ? 'Shared' : subItem,
+                            style: TextStyle(
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w600,
+                              
+                            ),
+                          ),
+                        ),
+                        ...weights.map((weight) {
+                          final value = widget.getValue(subItem: subItem, weight: weight);
+                          return Container(
+                            width: cellWidth,
+                            height: rowHeight,
+                            decoration: BoxDecoration(
+                              border: Border(
+                                right: BorderSide(color: Colors.grey.shade300),
+                                bottom: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            child: EditableCell(
+                              initialValue: value,
+                              colorResolver: (v) {
+                                  // Threshold mode -> always neutral
+                                  if (isThreshold) return Colors.grey.shade100;
+                                  
+                                  // Inventory mode -> check threshold
+                                  if (v == null) return Colors.grey.shade100;
+  
+                                  // Access GlobalState to get the configured threshold
+                                  final globalState = Provider.of<GlobalState>(context, listen: false);
+                                  final threshold = globalState.getThresholdFor(
+                                    category: widget.category,
+                                    item: widget.item,
+                                    subItem: subItem, // Thresholds are stored per sub-item (even shared ones are copied)
+                                    weight: weight,
+                                  );
+  
+                                  if (threshold == null) {
+                                    // No threshold configured -> Grey
+                                    return Colors.grey.shade100;
                                   }
-                                  return Container(
-                                    width: cellWidth,
-                                    height: rowHeight,
-                                    margin: const EdgeInsets.all(4),
-                                    child: EditableCell(
-                                      initialValue: value?.toString() ?? '',
-                                      backgroundColor: widget.mode == InventoryTableMode.inventory && value != null
-                                          ? (value < ThresholdService().getThresholdFor(
-                                              category: widget.category,
-                                              item: widget.item,
-                                              subItem: subItem,
-                                              weight: weight,
-                                            )
-                                              ? Colors.red.shade100
-                                              : Colors.green.shade100)
-                                          : bgColor,
-                                      onValueChanged: (val) async {
-                                        final parsed = val.trim().isEmpty ? null : int.tryParse(val);
-                                        try {
-                                          await widget.setValue(
-                                            subItem: subItem,
-                                            weight: weight,
-                                            value: parsed,
-                                          );
-                                          setState(() {});
-                                        } catch (_) {}
-                                      },
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+  
+                                  if (v < threshold) {
+                                    // Below threshold -> Red
+                                    return Colors.red.shade100;
+                                  } else {
+                                    // At or above threshold -> Green
+                                    return Colors.green.shade100;
+                                  }
+                              },
+                              onValueSaved: (parsed) async {
+                                await widget.setValue(
+                                  subItem: subItem,
+                                  weight: weight,
+                                  value: parsed,
+                                );
+                              },
                             ),
-                          ],
-                        );
-                      }),
-                    ],
-                  ),
-                ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ];
+                }),
               ],
             ),
+          ),
         ),
-      );
-
-    if (widget.embed) {
+      ),
+    ); if (widget.embed) {
       return Card(
         margin: EdgeInsets.zero,
         child: Padding(
@@ -230,71 +349,7 @@ class _InventoryTableState extends State<InventoryTable> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: tableContent,
-      floatingActionButton: widget.mode == InventoryTableMode.inventory
-          ? FloatingActionButton.extended(
-              onPressed: _showBulkUpdateDialog,
-              label: const Text('Bulk Update'),
-              icon: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 
-  void _showBulkUpdateDialog() {
-    if (widget.subItems.isEmpty) return;
-
-    _selectedSubItem ??= widget.subItems.first;
-
-    showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Bulk Update Quantity'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedSubItem,
-                decoration: const InputDecoration(labelText: 'Sub Item'),
-                items: widget.subItems
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (v) {
-                  setState(() {
-                    _selectedSubItem = v;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Set Quantity'),
-                onChanged: (v) {
-                  setState(() {
-                    _bulkDelta = int.tryParse(v) ?? 0;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              child: const Text('Apply'),
-              onPressed: () async {
-                final subItem = _selectedSubItem;
-                if (subItem == null || _bulkDelta == 0) return;
-                // Bulk update callback: For each weight, call setValue
-                for (final weight in widget.weightsForSubItem(subItem).where((w) => w.trim().isNotEmpty && !w.startsWith('__') && w != 'shared')) {
-                  await widget.setValue(subItem: subItem, weight: weight, value: _bulkDelta);
-                }
-                _bulkDelta = 0;
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 }

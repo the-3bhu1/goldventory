@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:goldventory/core/services/threshold_service.dart';
 
@@ -15,15 +16,6 @@ class GlobalState extends ChangeNotifier {
 
   // Loading state
   bool _isLoading = false;
-
-  // Bulk update mode flag
-  bool _isBulkUpdating = false;
-  bool get isBulkUpdating => _isBulkUpdating;
-
-  void setBulkUpdating(bool value) {
-    _isBulkUpdating = value;
-    notifyListeners();
-  }
 
   bool get isLoading => _isLoading;
 
@@ -57,6 +49,8 @@ class GlobalState extends ChangeNotifier {
 
   /// Persist weight mode selection for a category+item.
   /// This is intentionally immutable once set.
+  /// Persist weight mode selection for a category+item.
+  /// This is intentionally immutable once set.
   void setWeightModeFor({
     required String category,
     required String item,
@@ -74,6 +68,29 @@ class GlobalState extends ChangeNotifier {
     }
 
     _weightModes[key] = isShared;
+    
+    // Persist to thresholds metadata
+    // __metadata -> shared_mode = 1 (true) or 0 (false)
+    thresholds.setThreshold(
+      category: category, 
+      item: item, 
+      subItem: '__metadata', 
+      weight: 'shared_mode', 
+      threshold: isShared ? 1 : 0
+    );
+
+    // Sync to inventory collection (mirrored structure)
+    // MUST use safe keys to avoid crashes on iOS if keys have '.' or '/'
+    String safeKey(String k) => k.replaceAll('.', '_').replaceAll('/', '_');
+    
+    FirebaseFirestore.instance.collection('inventory').doc(safeKey(category)).set({
+      safeKey(item): {
+        '__metadata': {
+          'shared_mode': isShared ? 1 : 0
+        }
+      }
+    }, SetOptions(merge: true));
+    
     notifyListeners();
   }
 
@@ -81,14 +98,10 @@ class GlobalState extends ChangeNotifier {
   // Thin forwarding helpers (convenience)
   // ------------------------------
 
-  int get defaultThreshold => thresholds.defaultThreshold;
-
-  /// Simple fallback getter — returns global default when a direct lookup isn't possible.
-  int getThreshold(String key) => defaultThreshold;
-
   /// Get threshold for a specific path (category, item, optional subItem, weight)
-  int getThresholdFor({required String category, required String item, String? subItem, required String weight}) =>
-      thresholds.getThresholdFor(category: category, item: item, subItem: subItem, weight: weight);
+  int? getThresholdFor({required String category, required String item, String? subItem, required String weight}) {
+    return thresholds.getThresholdFor(category: category, item: item, subItem: subItem, weight: weight);
+  }
 
   /// Set threshold at explicit path and notify listeners
   void setThresholdFor({required String category, required String item, String? subItem, required String weight, required int threshold}) {
@@ -108,7 +121,10 @@ class GlobalState extends ChangeNotifier {
 
   /// Heuristic check — consider quantity below threshold if less than global default.
   /// For precise checks prefer using getThresholdFor(...) and comparing.
-  bool isBelowThreshold(String key, int? quantity) => quantity != null && quantity < defaultThreshold;
+  bool isBelowThreshold(String key, int? quantity) {
+    // No implicit thresholds anymore
+    return false;
+  }
 
   void clearThresholds() {
     thresholds.asNestedMap().clear();
@@ -120,8 +136,78 @@ class GlobalState extends ChangeNotifier {
   // Persistence hooks (delegated)
   // ------------------------------
 
+  // -----------------
+  // Schema Access
+  // -----------------
+  /// Get configured weights for a sub-item (Schema source of truth)
+  List<String> getWeightsFor({
+    required String category, 
+    required String item, 
+    required String subItem
+  }) {
+    final catMap = thresholds.asNestedMap()[category];
+    if (catMap == null) return [];
+    final itemMap = catMap[item];
+    if (itemMap == null) return [];
+    
+    final subMap = itemMap[subItem];
+    
+    // 1. Get explicit weights (if any)
+    final explicitKeys = subMap?.keys
+        .where((w) => w.isNotEmpty && !w.startsWith('__'))
+        .toList() ?? [];
+        
+    // 2. If explicit weights found, return them
+    if (explicitKeys.isNotEmpty) return explicitKeys;
+
+    // 3. Fallback: If Shared Mode, look for schema from siblings
+    final isShared = getWeightModeFor(category: category, item: item) == true;
+    if (isShared) {
+      // Find a "donor" subitem that has weights
+      for (final otherSub in itemMap.keys) {
+        if (otherSub.startsWith('__')) continue; 
+        final otherWeights = itemMap[otherSub];
+        
+        final donorKeys = otherWeights?.keys
+            .where((w) => w.isNotEmpty && !w.startsWith('__'))
+            .toList();
+            
+        if (donorKeys != null && donorKeys.isNotEmpty) {
+           return donorKeys;
+        }
+      }
+    }
+    
+    return [];
+  }
+
+  // ------------------------------
+  // Persistence hooks (delegated)
+  // ------------------------------
+  
   Future<void> loadThresholds() async {
     await thresholds.load();
+    
+    // Hydrate weight modes from metadata
+    final map = thresholds.asNestedMap();
+    _weightModes.clear();
+    
+    for (final cat in map.keys) {
+      final items = map[cat];
+      if (items == null) continue;
+      for (final item in items.keys) {
+        final val = thresholds.getThresholdFor(
+          category: cat, 
+          item: item, 
+          subItem: '__metadata', 
+          weight: 'shared_mode'
+        );
+        if (val != null) {
+          _weightModes[_weightModeKey(cat, item)] = (val == 1);
+        }
+      }
+    }
+    
     notifyListeners();
   }
 
