@@ -149,15 +149,6 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     return false;
   }
 
-  int _naturalSubItemSort(String a, String b) {
-    final aNum = int.tryParse(a.split(' ').first);
-    final bNum = int.tryParse(b.split(' ').first);
-    if (aNum != null && bNum != null) return aNum.compareTo(bNum);
-    if (aNum != null) return -1;
-    if (bNum != null) return 1;
-    return a.compareTo(b);
-  }
-
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SettingsViewModel>();

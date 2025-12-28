@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:goldventory/features/inventory/view_model/inventory_view_model.dart';
 import 'package:provider/provider.dart';
 import 'core/services/threshold_service.dart';
-import 'features/settings/settings_view_model.dart';
 import 'global/global_state.dart';
 import 'app/app.dart';
 import 'firebase_options.dart';
