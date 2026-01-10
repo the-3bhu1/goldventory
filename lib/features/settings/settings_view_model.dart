@@ -652,14 +652,33 @@ class SettingsViewModel extends ChangeNotifier {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return;
 
-    _deleteNode(parent: itemMap, key: subItem);
+    // 1. Remove from local state (Manual removal to avoid premature _commit() from _deleteNode)
+    itemMap.remove(subItem);
+    
+    // 2. Remove from GlobalState (CRITICAL: Must happen BEFORE _commit/save)
+    final globalItemMap = globalState.thresholds.asNestedMap()[category]?[item];
+    if (globalItemMap != null) {
+      globalItemMap.remove(subItem);
+      // Clean up parent if empty
+      if (globalItemMap.isEmpty) {
+        globalState.thresholds.asNestedMap()[category]?.remove(item);
+      }
+    }
 
+    // 3. Check for empty parents in local state from the bottom up
     if (itemMap.isEmpty) {
       _local[category]?.remove(item);
     }
     if (_local[category]?.isEmpty ?? false) {
       _local.remove(category);
     }
+
+    _dirty = true;
+    notifyListeners();
+    
+    // 4. Persist to Thresholds (Overwrite)
+    // Now that GlobalState is clean, this will write the document WITHOUT the deleted sub-item
+    unawaited(_commit());
 
     final safeCat = _encodeKey(category);
     final safeItem = _encodeKey(item);

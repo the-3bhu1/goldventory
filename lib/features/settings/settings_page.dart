@@ -56,7 +56,11 @@ class SettingsPage extends StatelessWidget {
     final gs = Provider.of<GlobalState>(context, listen: false);
 
     return ChangeNotifierProvider<SettingsViewModel>(
-      create: (_) => SettingsViewModel(globalState: gs)..load(),
+      create: (_) {
+        final vm = SettingsViewModel(globalState: gs);
+        Future.microtask(() => vm.load());
+        return vm;
+      },
       child: Consumer<SettingsViewModel>(builder: (context, vm, _) {
         final gs = context.watch<GlobalState>();
         return Scaffold(

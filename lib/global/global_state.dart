@@ -79,17 +79,7 @@ class GlobalState extends ChangeNotifier {
       threshold: isShared ? 1 : 0
     );
 
-    // Sync to inventory collection (mirrored structure)
-    // MUST use safe keys to avoid crashes on iOS if keys have '.' or '/'
-    String safeKey(String k) => k.replaceAll('.', '_').replaceAll('/', '_');
-    
-    FirebaseFirestore.instance.collection('inventory').doc(safeKey(category)).set({
-      safeKey(item): {
-        '__metadata': {
-          'shared_mode': isShared ? 1 : 0
-        }
-      }
-    }, SetOptions(merge: true));
+
     
     notifyListeners();
   }

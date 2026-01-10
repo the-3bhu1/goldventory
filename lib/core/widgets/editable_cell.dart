@@ -121,6 +121,8 @@ class _EditableCellState extends State<EditableCell> {
           keyboardType: widget.keyboardType,
           decoration: const InputDecoration(
             border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
             isDense: true,
           ),
           style: TextStyle(fontSize: fontSize),
