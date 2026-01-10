@@ -88,6 +88,7 @@ class _ItemListState extends State<ItemList> {
                                     ),
                                   ),
                                   PopupMenuButton<_ItemMenuAction>(
+                                    color: const Color(0xFFF0F8F3),
                                     icon: const Icon(Icons.more_vert),
                                     onSelected: (action) async {
                                       switch (action) {
@@ -332,7 +333,7 @@ class _ItemListState extends State<ItemList> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _showCreateItemDialog(context),
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(Icons.add, color: Colors.black),
                     label: const Text('Add item'),
                   ),
                 ),

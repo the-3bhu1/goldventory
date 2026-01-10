@@ -147,8 +147,10 @@ class SettingsViewModel extends ChangeNotifier {
   List<String> itemsFor(String category) {
     final m = _local[category];
     if (m == null) return [];
-    final keys = m.keys.toList(); // ..sort(); // Removed
-    return keys;
+    
+    // keys.sort(); // Removed
+    // Filter out metadata fields (e.g. __item_order)
+    return m.keys.where((k) => !k.startsWith('__')).toList();
   }
 
   List<String> subItemsFor(String category, String item) {
@@ -156,6 +158,7 @@ class SettingsViewModel extends ChangeNotifier {
     if (itemMap == null) return [];
 
     // Preserve insertion order exactly as stored
+    // Filter out metadata fields (e.g. __metadata, __item_order etc)
     return itemMap.keys.where((k) => !k.startsWith('__')).toList();
   }
 
@@ -348,6 +351,30 @@ class SettingsViewModel extends ChangeNotifier {
       oldName: oldName,
       newName: newName,
     );
+     
+    // Update GlobalState (Preserving Order)
+    globalState.thresholds.renameCategory(oldName, newName);
+    
+    // Explicitly rename the Persistence Document via delete-then-create transaction or similar?
+    // Firestore doesn't support "rename collection/doc".
+    // Since we are changing the ID, we must read-copy-delete.
+    // However, `save()` handles writing the new data.
+    // We just need to delete the old data.
+    // BUT we must also migrate the INVENTORY data.
+    
+    // For Category rename, it's expensive (move all docs). 
+    // Implementing Inventory Migration for Category is complex.
+    // Given the user report was about SubItems, let's focus on that first, 
+    // but at least clean up the old Threshold doc.
+    
+    final safeOld = _encodeKey(oldName);
+    FirebaseFirestore.instance.collection('thresholds').doc(safeOld).delete();
+    
+    
+    // TODO: Migrate Inventory Collection for this category?
+    // This is a heavy operation. Leaving as-is for now unless requested.
+    
+    unawaited(_commit());
   }
 
   /// Rename an item within a category while preserving all subItems and thresholds
@@ -360,6 +387,44 @@ class SettingsViewModel extends ChangeNotifier {
       oldName: oldName,
       newName: newName,
     );
+    
+    // Update GlobalState (Preserving Order)
+    globalState.thresholds.renameItem(category, oldName, newName);
+
+    // Remove old key from Firestore (thresholds)
+    // We rely on save() to write the new key.
+    final safeCat = _encodeKey(category);
+    final safeOld = _encodeKey(oldName);
+    
+    FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
+        safeOld: FieldValue.delete(),
+    });
+    
+    // Migrate Inventory Data?
+    // Inventory structure: doc(cat) -> field(item) -> map(subItem)
+    // We should move field(item) -> field(newitem)
+    final safeNew = _encodeKey(newName);
+    
+    final docRef = FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+    FirebaseFirestore.instance.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        if (!snap.exists) return;
+        final data = snap.data();
+        if (data == null) return;
+        
+        final oldData = data[safeOld];
+        if (oldData != null) {
+            // Write to new key
+            tx.update(docRef, {
+                safeNew: oldData,
+                safeOld: FieldValue.delete(),
+            });
+        }
+    }).catchError((e) {
+        developer.log('Inventory item rename failed: $e', name: 'SettingsVM');
+    });
+    
+    unawaited(_commit());
   }
 
   /// Rename a subItem within an item, preserving weights and thresholds
@@ -378,6 +443,62 @@ class SettingsViewModel extends ChangeNotifier {
       oldName: oldName,
       newName: newName,
     );
+
+    // Update GlobalState (Preserving Order)
+    globalState.thresholds.renameSubItem(category, item, oldName, newName);
+    
+    // Firestore Persistence:
+    final safeCat = _encodeKey(category);
+    final safeItem = _encodeKey(item);
+    final safeOld = _encodeKey(oldName);
+    final safeNew = _encodeKey(newName);
+    
+    // 1. Migrate Inventory Data (Crucial to prevent data loss)
+    // path: inventory/doc(cat)/item/oldSub -> inventory/doc(cat)/item/newSub
+    
+    final docRef = FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+    FirebaseFirestore.instance.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        if (!snap.exists) return; // No inventory to migrate
+        
+        // We need to read the nested map safely
+        // Snapshot data is Map<String, dynamic>
+        // We look for [safeItem][safeOld]
+        final data = snap.data();
+        if (data == null) return;
+        
+        final itemData = data[safeItem];
+        // Must perform safe casting and null checks
+        if (itemData is Map) {
+             final subData = itemData[safeOld];
+             // If we have data for the old sub-item, move it
+             if (subData != null) {
+                 // Construct update map
+                 // We can use dot notation for nested fields in 'update'
+                 // "item.newSub": value
+                 // "item.oldSub": delete
+                 
+                 final fieldPathNew = '$safeItem.$safeNew';
+                 final fieldPathOld = '$safeItem.$safeOld';
+                 
+                 tx.update(docRef, {
+                     fieldPathNew: subData,
+                     fieldPathOld: FieldValue.delete(),
+                 });
+             }
+        }
+    }).catchError((e) {
+        developer.log('Inventory sub-item rename failed: $e', name: 'SettingsVM');
+    });
+    
+    // 2. Remove old key from Thresholds Firestore
+    // (New key is written by _commit() -> save(), but old key remains unless deleted)
+    final fieldPathOld = '$safeItem.$safeOld';
+    FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
+        fieldPathOld: FieldValue.delete(),
+    });
+    
+    unawaited(_commit());
   }
 
   /// Private helper for renaming a key in a nested map and triggering state updates
@@ -395,12 +516,35 @@ class SettingsViewModel extends ChangeNotifier {
 
     assert(!parent.containsKey(newName), 'Target already exists');
 
-    parent[newName] = existing;
-    parent.remove(oldName);
+    // PRESERVE ORDER: Reconstruct map with new key in valid position
+    final keys = parent.keys.toList();
+    final index = keys.indexOf(oldName);
+    
+    // Create temp map to rebuild
+    final newMap = <String, dynamic>{};
+    for (int i = 0; i < keys.length; i++) {
+        final key = keys[i];
+        if (key == oldName) {
+            newMap[newName] = existing;
+        } else {
+            newMap[key] = parent[key];
+        }
+    }
+    
+    // Replace content of parent map in-place
+    parent.clear();
+    // Use manual iteration to avoid "not a subtype" error with addAll
+    for (final entry in newMap.entries) {
+      parent[entry.key] = entry.value;
+    }
 
+    // CRITICAL FIX: Do NOT call _commit here.
+    // _commit pushes _local to GlobalState; it does not remove old keys.
+    // If we commit before the caller removes the old key from GlobalState, we persist duplicates.
+    // The caller MUST handles GlobalState updates and then call unawaited(_commit()).
+    
     _dirty = true;
     notifyListeners();
-    unawaited(_commit());
   }
 
   /// Create a new item under a category. Do NOT create a default subItem.

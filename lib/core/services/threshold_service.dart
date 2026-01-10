@@ -110,6 +110,46 @@ class ThresholdService {
     if (itemMap.isEmpty) _thresholds.remove(category);
   }
 
+  /// Helper to rename a key in a map while preserving its index/order.
+  void _renameKeyInOrderedMap<V>(Map<String, V> map, String oldKey, String newKey) {
+    if (!map.containsKey(oldKey)) return;
+    if (map.containsKey(newKey)) return;
+
+    final entries = map.entries.toList();
+    final index = entries.indexWhere((e) => e.key == oldKey);
+    if (index == -1) return;
+
+    final value = entries[index].value;
+    
+    // Rebuild map
+    map.clear();
+    for (int i = 0; i < entries.length; i++) {
+      if (i == index) {
+        map[newKey] = value;
+      } else {
+        map[entries[i].key] = entries[i].value;
+      }
+    }
+  }
+
+  void renameCategory(String oldName, String newName) {
+    _renameKeyInOrderedMap(_thresholds, oldName, newName);
+  }
+
+  void renameItem(String category, String oldName, String newName) {
+    final catMap = _thresholds[category];
+    if (catMap == null) return;
+    _renameKeyInOrderedMap(catMap, oldName, newName);
+  }
+
+  void renameSubItem(String category, String item, String oldName, String newName) {
+    final catMap = _thresholds[category];
+    if (catMap == null) return;
+    final itemMap = catMap[item];
+    if (itemMap == null) return;
+    _renameKeyInOrderedMap(itemMap, oldName, newName);
+  }
+
   // -----------------
   // Resolution
   // -----------------
@@ -206,26 +246,81 @@ class ThresholdService {
       final col = FirebaseFirestore.instance.collection('thresholds');
       final snaps = await col.get();
 
+      // 1. Identify Layout Document
+      List<String> categoryOrder = [];
+      try {
+        final layoutDoc = snaps.docs.firstWhere((d) => d.id == '_layout');
+        final data = layoutDoc.data();
+        if (data['categories'] is List) {
+          categoryOrder = List<String>.from(data['categories']);
+        }
+      } catch (_) {
+        // No layout doc found, or invalid format
+      }
+
+      // 2. Separate Data Docs
+      final docsMap = {for (var d in snaps.docs) d.id: d.data()};
+      docsMap.remove('_layout'); // Ensure layout doc is not processed as a category
+
       _thresholds.clear();
 
-      for (final snap in snaps.docs) {
-        final catKey = snap.id;
-        final data = snap.data();
+      // 3. Process Categories in Order
+      final orderedCategories = <String>{
+        ...categoryOrder,
+        ...docsMap.keys, // Append any new/unknown categories at the end
+      };
 
-        if (data.isEmpty) continue;
+      for (final catKey in orderedCategories) {
+        final data = docsMap[catKey];
+        if (data == null) continue; // Should not happen for keys from docsMap
 
-        data.forEach((itemKey, itemValue) {
-          if (itemValue is! Map) return;
+        // Extract Item Order
+        List<String> itemOrder = [];
+        if (data['__item_order'] is List) {
+          itemOrder = List<String>.from(data['__item_order']);
+        }
 
-          itemValue.forEach((subKey, subVal) {
-            if (subVal is! Map) return;
-            _ensureCategoryItemSub(catKey, itemKey.toString(), subKey.toString());
+        // Filter out metadata from data map
+        final itemsMap = Map<String, dynamic>.from(data);
+        itemsMap.remove('__item_order');
+
+        final orderedItems = <String>{
+          ...itemOrder,
+          ...itemsMap.keys,
+        };
+
+        for (final itemKeyRaw in orderedItems) {
+          final itemKey = itemKeyRaw.toString();
+          final itemValue = itemsMap[itemKey];
+          if (itemValue is! Map) continue;
+
+          // Extract SubItem Order
+          List<String> subItemOrder = [];
+          if (itemValue['__sub_item_order'] is List) {
+            subItemOrder = List<String>.from(itemValue['__sub_item_order']);
+          }
+
+          final subItemsMap = Map<String, dynamic>.from(itemValue);
+          subItemsMap.remove('__sub_item_order');
+
+          final orderedSubItems = <String>{
+            ...subItemOrder,
+            ...subItemsMap.keys,
+          };
+
+          for (final subKeyRaw in orderedSubItems) {
+            final subKey = subKeyRaw.toString();
+            final subVal = subItemsMap[subKey];
+
+            if (subVal is! Map) continue;
+            
+            _ensureCategoryItemSub(catKey, itemKey, subKey);
 
             subVal.forEach((wKey, wVal) {
-              _thresholds[catKey]![itemKey.toString()]![subKey.toString()]![wKey.toString()] = wVal;
+              _thresholds[catKey]![itemKey]![subKey]![wKey.toString()] = wVal;
             });
-          });
-        });
+          }
+        }
       }
       // Backfill disabled to prevent overwriting existing inventory values with empty maps
       // await backfillInventoryFromThresholds();
@@ -259,12 +354,30 @@ class ThresholdService {
 
       // Build the raw payload as before
       final Map<String, dynamic> payload = {};
-
+      
+      // Capture Order Metadata from current in-memory insertion order
+      final List<String> categoryOrder = _thresholds.keys.map(_safeKey).toList();
+      
       _thresholds.forEach((cat, itemMap) {
         final Map<String, dynamic> itemPayload = {};
+        
+        // Item Order
+        final List<String> itemOrder = itemMap.keys
+            .where((k) => !k.startsWith('__'))
+            .map(_safeKey)
+            .toList();
+        itemPayload['__item_order'] = itemOrder;
 
         itemMap.forEach((item, subMap) {
           final Map<String, dynamic> subPayload = {};
+          
+          // Sub-item Order
+          final List<String> subItemOrder = subMap.keys
+              .where((k) => k != 'shared' && !k.startsWith('__'))
+              .map(_safeKey)
+              .toList();
+          subPayload['__sub_item_order'] = subItemOrder;
+
           subMap.forEach((subItem, weightMap) {
             if (subItem == 'shared') return;
             final Map<String, dynamic> weightPayload = {};
@@ -314,6 +427,13 @@ class ThresholdService {
 
       // Write one document per category (exact mirror of inventory)
       final col = FirebaseFirestore.instance.collection('thresholds');
+      
+      // 1. Save Category Order Layout
+      await col.doc('_layout').set({
+        'categories': categoryOrder,
+      }, SetOptions(merge: false));
+
+      // 2. Save Data Docs
       for (final entry in sanitized.entries) {
         final cat = entry.key;
         final data = entry.value;
