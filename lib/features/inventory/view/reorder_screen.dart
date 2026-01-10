@@ -9,6 +9,7 @@ import 'package:goldventory/core/services/inventory_snapshot_service.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:goldventory/app/routes.dart';
+import '../../../../app/theme.dart';
 import '../../../core/services/threshold_service.dart';
 
 class ReorderScreen extends StatefulWidget {
@@ -87,7 +88,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   color: const Color(0xFFC6E6DA),
                   child: ExpansionTile(
                     title: Text(title),
-                    backgroundColor: const Color(0xFFF0F8F3),
+                    backgroundColor: AppTheme.highlightBackground,
                     children: [
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,

@@ -15,7 +15,7 @@ class GlobalState extends ChangeNotifier {
   bool isDarkMode = false;
 
   // Loading state
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   bool get isLoading => _isLoading;
 
@@ -186,6 +186,9 @@ class GlobalState extends ChangeNotifier {
   // ------------------------------
   
   Future<void> loadThresholds() async {
+    _isLoading = true;
+    notifyListeners();
+
     await thresholds.load();
     
     // Hydrate weight modes from metadata
@@ -208,6 +211,7 @@ class GlobalState extends ChangeNotifier {
       }
     }
     
+    _isLoading = false;
     notifyListeners();
   }
 

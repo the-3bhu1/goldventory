@@ -5,49 +5,74 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../core/widgets/inventory_table.dart';
 import '../../../global/global_state.dart';
+import '../../../app/theme.dart';
 
-class _InventorySkeleton extends StatelessWidget {
+class _InventorySkeleton extends StatefulWidget {
   const _InventorySkeleton();
 
   @override
+  State<_InventorySkeleton> createState() => _InventorySkeletonState();
+}
+
+class _InventorySkeletonState extends State<_InventorySkeleton> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
-      itemCount: 4,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: Container(
-            height: 72,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            alignment: Alignment.centerLeft,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+    final base = Colors.grey.shade300;
+    final highlight = Colors.grey.shade200;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              height: 80, // Match Card > ExpansionTile visual height
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10), // Match Card rounded corners
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [base, highlight, base],
+                  stops: const [0.25, 0.5, 0.75],
+                  transform: _SlidingGradientTransform(_controller.value),
                 ),
-                const SizedBox(width: 16),
-                Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
+  }
+}
+
+class _SlidingGradientTransform extends GradientTransform {
+  final double slidePercent;
+
+  const _SlidingGradientTransform(this.slidePercent);
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * slidePercent, 0, 0);
   }
 }
 
@@ -141,7 +166,7 @@ class InventoryScreen extends StatelessWidget {
                 child: ExpansionTile(
                   tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   childrenPadding: const EdgeInsets.only(left: 20, right: 12, bottom: 12),
-                  backgroundColor: const Color(0xFFF0F8F3),
+                  backgroundColor: AppTheme.highlightBackground,
                   title: Text(
                     category,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),

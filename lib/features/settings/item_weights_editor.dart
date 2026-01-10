@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:goldventory/features/settings/settings_view_model.dart';
-
+import '../../app/theme.dart';
 import '../../core/utils/helpers.dart';
 
 class ItemWeightsEditor extends StatefulWidget {
@@ -208,6 +208,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
         title: Text('${widget.item} - Add weights'),
       ),
       body: Padding(
+
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
@@ -215,7 +216,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
               spacing: 8,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
+                  children: [
                 const Padding(
                   padding: EdgeInsets.only(right: 4.0),
                   child: Text('Mode:'),
@@ -223,6 +224,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                 ChoiceChip(
                   label: const Text('Shared weights'),
                   selected: _mode == WeightMode.shared,
+                  selectedColor: AppTheme.highlightBackground,
+                  backgroundColor: Colors.white,
                   onSelected: _mode == null
                       ? (_) {
                           final vm = context.read<SettingsViewModel>();
@@ -232,11 +235,13 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                           });
                         }
                       : null,
-                  disabledColor: Colors.grey.shade300,
+                  disabledColor: _mode == WeightMode.shared ? AppTheme.highlightBackground : Colors.grey.shade300,
                 ),
                 ChoiceChip(
                   label: const Text('Per sub-item'),
                   selected: _mode == WeightMode.perSubItem,
+                  selectedColor: AppTheme.highlightBackground,
+                  backgroundColor: Colors.white,
                   onSelected: _mode == null
                       ? (_) {
                           final vm = context.read<SettingsViewModel>();
@@ -246,33 +251,49 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                           });
                         }
                       : null,
-                  disabledColor: Colors.grey.shade300,
+                  disabledColor: _mode == WeightMode.perSubItem ? AppTheme.highlightBackground : Colors.grey.shade300,
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            if (_mode == WeightMode.shared) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _addCtrl,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g. 2g, 3g, 5g',
+            if (_mode == WeightMode.shared)
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _addCtrl,
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. 2g, 3g, 5g',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(onPressed: _addSharedWeight, child: const Text('Add'))
+                        ],
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      // Use width: double.infinity to force left alignment in Column
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _sharedWeights.map((w) => Chip(
+                            label: Text(w),
+                            backgroundColor: AppTheme.highlightBackground,
+                          )).toList(),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(onPressed: _addSharedWeight, child: const Text('Add'))
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _sharedWeights.map((w) => Chip(label: Text(w))).toList(),
-              ),
-            ] else if (_mode == WeightMode.perSubItem) ...[
+                ),
+              )
+            else if (_mode == WeightMode.perSubItem)
               Expanded(
                 child: ListView(
                   children: (_perSubItemWeights.keys.toList()
@@ -314,7 +335,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                             runSpacing: 8,
                             children: (() {
                               final sorted = [...weights]; // ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
-                              return sorted.map((w) => Chip(label: Text(w))).toList();
+                              return sorted.map((w) => Chip(
+                                label: Text(w),
+                                backgroundColor: AppTheme.highlightBackground,
+                              )).toList();
                             })(),
                           ),
                         ),
@@ -322,8 +346,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                     );
                   }).toList(),
                 ),
-              ),
-            ] else ...[
+              )
+            else
               Expanded(
                 child: Center(
                   child: Text(
@@ -333,11 +357,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                   ),
                 ),
               ),
-            ],
             const SizedBox(height: 12),
             if (_mode != null && ((_mode == WeightMode.shared && _sharedWeights.isNotEmpty) || (_mode == WeightMode.perSubItem && _perSubItemWeights.isNotEmpty)))
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   _mode == WeightMode.shared
                       ? '${_sharedWeights.length} ${_sharedWeights.length == 1 ? 'weight' : 'weights'}'
@@ -345,19 +368,21 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                   height: 48,
+                   child: ElevatedButton(
+                    onPressed: _canSave ? _saveWeights : null,
+                    child: const Text('Save'),
+                   ),
+                  ),
+                ),
+              ],
+            )
           ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _canSave ? _saveWeights : null,
-              child: const Text('Save'),
-            ),
-          ),
         ),
       ),
     );

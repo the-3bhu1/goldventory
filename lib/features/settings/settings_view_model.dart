@@ -46,7 +46,25 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  SettingsViewModel({required this.globalState});
+  SettingsViewModel({required this.globalState}) {
+    globalState.addListener(_onGlobalStateChanged);
+  }
+
+  @override
+  void dispose() {
+    globalState.removeListener(_onGlobalStateChanged);
+    _disposed = true;
+    super.dispose();
+  }
+
+  void _onGlobalStateChanged() {
+    if (_disposed) return;
+    // If GlobalState finished loading and we are empty, hydrate.
+    if (!globalState.isLoading && _local.isEmpty && globalState.thresholds.asNestedMap().isNotEmpty) {
+      _hydrateFromGlobal();
+      notifyListeners();
+    }
+  }
 
   // -----------------
   // Loading / discard
@@ -814,9 +832,5 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
+
 }

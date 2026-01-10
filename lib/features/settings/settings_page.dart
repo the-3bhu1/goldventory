@@ -4,6 +4,7 @@ import 'package:goldventory/global/global_state.dart';
 import 'package:goldventory/features/settings/settings_view_model.dart';
 import 'package:goldventory/features/settings/category_list.dart';
 import 'item_list.dart';
+import '../../app/theme.dart';
 
 /// Settings landing page: provides a SettingsViewModel and shows categories.
 class SettingsPage extends StatelessWidget {
@@ -16,7 +17,7 @@ class SettingsPage extends StatelessWidget {
     final result = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFFF0F8F3),
+        backgroundColor: AppTheme.highlightBackground,
         title: const Text('Create category'),
         content: TextField(
           controller: controller,
@@ -116,7 +117,7 @@ class _SettingsSkeletonState extends State<_SettingsSkeleton>
 
     Widget row() => Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
-          height: 16,
+          height: 56, // Match ListTile height + padding
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
             gradient: LinearGradient(

@@ -5,6 +5,7 @@ import '../../core/utils/helpers.dart';
 import '../../core/widgets/inventory_table.dart';
 import 'sub_item_list.dart';
 import 'item_weights_editor.dart';
+import '../../app/theme.dart';
 
 enum _ItemMenuAction { rename, delete }
 
@@ -88,7 +89,7 @@ class _ItemListState extends State<ItemList> {
                                     ),
                                   ),
                                   PopupMenuButton<_ItemMenuAction>(
-                                    color: const Color(0xFFF0F8F3),
+                                    color: AppTheme.highlightBackground,
                                     icon: const Icon(Icons.more_vert),
                                     onSelected: (action) async {
                                       switch (action) {
