@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:goldventory/app/theme.dart';
 import 'package:goldventory/core/widgets/editable_cell.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
 import 'package:goldventory/global/global_state.dart';
@@ -98,10 +99,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: AppColors.surfaceVariant,
                             border: Border(
                               right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                              bottom: BorderSide(color: Colors.grey.shade300),
+                              bottom: BorderSide(color: AppColors.borderGrey),
                             ),
                           ),
                           alignment: Alignment.centerLeft,
@@ -119,10 +120,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: AppColors.surfaceVariant,
                             border: Border(
-                              right: BorderSide(color: Colors.grey.shade300),
-                              bottom: BorderSide(color: Colors.grey.shade300),
+                              right: BorderSide(color: AppColors.borderGrey),
+                              bottom: BorderSide(color: AppColors.borderGrey),
                             ),
                           ),
                           child: Text(
@@ -154,10 +155,10 @@ class _InventoryTableState extends State<InventoryTable> {
                              height: rowHeight,
                              padding: const EdgeInsets.symmetric(horizontal: 12),
                              decoration: BoxDecoration(
-                               color: Colors.grey.shade200,
+                               color: AppColors.surfaceVariant,
                                border: Border(
                                  right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                                 bottom: BorderSide(color: Colors.grey.shade300),
+                                 bottom: BorderSide(color: AppColors.borderGrey),
                                ),
                              ),
                              alignment: Alignment.centerLeft,
@@ -213,10 +214,10 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
+                              color: AppColors.surfaceVariant,
                               border: Border(
                                 right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                                bottom: BorderSide(color: AppColors.borderGrey),
                               ),
                             ),
                             alignment: Alignment.centerLeft,
@@ -234,10 +235,10 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
+                              color: AppColors.surfaceVariant,
                               border: Border(
-                                right: BorderSide(color: Colors.grey.shade300),
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                                right: BorderSide(color: AppColors.borderGrey),
+                                bottom: BorderSide(color: AppColors.borderGrey),
                               ),
                             ),
                             child: Text(
@@ -260,10 +261,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
+                            color: AppColors.shimmerBase,
                             border: Border(
                               right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                              bottom: BorderSide(color: Colors.grey.shade300),
+                              bottom: BorderSide(color: AppColors.borderGrey),
                             ),
                           ),
                           alignment: Alignment.centerLeft,

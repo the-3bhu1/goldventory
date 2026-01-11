@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:goldventory/global/global_state.dart';
 import 'package:goldventory/features/settings/settings_view_model.dart';
 import 'package:goldventory/features/settings/category_list.dart';
+import '../../core/widgets/shimmer_loading.dart';
 import 'item_list.dart';
 import '../../app/theme.dart';
 
@@ -68,7 +69,17 @@ class SettingsPage extends StatelessWidget {
           body: Padding(
             padding: const EdgeInsets.all(12.0),
             child: gs.isLoading
-                ? _SettingsSkeleton()
+                ? ShimmerLoading.list(
+                    itemCount: 4,
+                    itemBuilder: (context, index) => Container(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          height: 56, // Match ListTile height + padding
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            color: AppColors.shimmerBase,
+                          ),
+                        ),
+                  )
                 : vm.categories.isEmpty
                     ? Center(
                         child: Text(
@@ -87,77 +98,5 @@ class SettingsPage extends StatelessWidget {
         );
       }),
     );
-  }
-}
-
-class _SettingsSkeleton extends StatefulWidget {
-  @override
-  State<_SettingsSkeleton> createState() => _SettingsSkeletonState();
-}
-
-class _SettingsSkeletonState extends State<_SettingsSkeleton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final base = Colors.grey.shade300;
-    final highlight = Colors.grey.shade200;
-
-    Widget row() => Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          height: 56, // Match ListTile height + padding
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [base, highlight, base],
-              stops: const [0.25, 0.5, 0.75],
-              transform: _SlidingGradientTransform(_controller.value),
-            ),
-          ),
-        );
-
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            row(),
-            row(),
-            row(),
-            row(),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SlidingGradientTransform extends GradientTransform {
-  final double slidePercent;
-
-  const _SlidingGradientTransform(this.slidePercent);
-
-  @override
-  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
-    return Matrix4.translationValues(bounds.width * slidePercent, 0, 0);
   }
 }

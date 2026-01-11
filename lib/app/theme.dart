@@ -46,3 +46,12 @@ class AppTheme {
     primarySwatch: Colors.indigo,
   );
 }
+
+class AppColors {
+  static const Color inventoryCardBackground = Color(0xFFC6E6DA);
+  static final Color shimmerBase = Colors.grey.shade300;
+  static final Color shimmerHighlight = Colors.grey.shade200;
+  static final Color surfaceVariant = Colors.grey.shade200;
+  static final Color borderGrey = Colors.grey.shade300;
+  static final Color textGrey = Colors.grey.shade600;
+}

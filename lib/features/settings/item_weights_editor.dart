@@ -14,12 +14,7 @@ class ItemWeightsEditor extends StatefulWidget {
 }
 
 class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
-  /// Safely parses a Firestore-safe numeric key (e.g. '2_5' -> 2.5)
-  num _safeNum(String raw) {
-    // Firestore-safe keys replace '.' with '_'
-    final normalized = raw.replaceAll('_', '.');
-    return num.tryParse(normalized) ?? double.infinity;
-  }
+  // _safeNum moved to Helpers.safeNum
   List<String> _sharedWeights = [];
   final Map<String, List<String>> _perSubItemWeights = {};
   final Map<String, TextEditingController> _perSubCtrls = {};
@@ -103,29 +98,21 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     }
   }
 
-  bool _areListsEqual(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    final sortedA = [...a]; // ..sort();
-    final sortedB = [...b]; // ..sort();
-    for (int i = 0; i < a.length; i++) {
-      if (sortedA[i] != sortedB[i]) return false;
-    }
-    return true;
-  }
+  // _areListsEqual moved to Helpers.areListsEqual
 
   bool get _isDirty {
     if (!_hydrated) return false;
     if (_mode != _initialMode) return true;
 
     if (_mode == WeightMode.shared) {
-      return !_areListsEqual(_sharedWeights, _initialSharedWeights);
+      return !Helpers.areListsEqual(_sharedWeights, _initialSharedWeights);
     }
     
     if (_mode == WeightMode.perSubItem) {
       if (_perSubItemWeights.length != _initialPerSubItemWeights.length) return true;
       for (final key in _perSubItemWeights.keys) {
         if (!_initialPerSubItemWeights.containsKey(key)) return true;
-        if (!_areListsEqual(
+        if (!Helpers.areListsEqual(
             _perSubItemWeights[key]!, _initialPerSubItemWeights[key]!)) {
           return true;
         }
@@ -169,7 +156,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
         }
       }
       _sharedWeights = [...resolved]
-        ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+        ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
     }
 
     // PER-SUB-ITEM MODE — hydrate once
@@ -177,7 +164,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       for (final s in subs) {
         final w = bySub[s] ?? <String>[];
         _perSubItemWeights[s] = [...w]
-          ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+          ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
 
         _perSubCtrls.putIfAbsent(s, () => TextEditingController());
       }
