@@ -208,7 +208,7 @@ class SettingsViewModel extends ChangeNotifier {
     final isShared = mode == WeightMode.shared;
 
     // 1. Get explicit weights (if any)
-    final explicitList = weights?.keys.cast<String>().toList() ?? [];
+    final explicitList = weights.keys.cast<String>().toList();
 
     // 2. If Shared Mode AND explicit list is empty (or we just want to be robust), lookup schema from siblings
     if (isShared && explicitList.isEmpty) {
@@ -536,7 +536,6 @@ class SettingsViewModel extends ChangeNotifier {
 
     // PRESERVE ORDER: Reconstruct map with new key in valid position
     final keys = parent.keys.toList();
-    final index = keys.indexOf(oldName);
     
     // Create temp map to rebuild
     final newMap = <String, dynamic>{};

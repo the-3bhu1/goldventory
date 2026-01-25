@@ -9,6 +9,7 @@ import '../../../global/global_state.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../app/theme.dart';
+import '../../../../data/repositories/product_repository.dart';
 
 
 
@@ -23,17 +24,49 @@ class InventoryScreen extends StatelessWidget {
     required String subItem,
     required String weight,
     required int? value,
+    required int Function()? getCurrentValue,
   }) async {
     final ref = FirebaseFirestore.instance.collection('inventory').doc(category);
+
+    // If deleting
     if (value == null) {
       await ref.update({'$item.$subItem.$weight': FieldValue.delete()});
-    } else {
-      await ref.set({
-        item: {
-          subItem: {weight: value}
-        }
-      }, SetOptions(merge: true));
+      return;
     }
+
+    // Check if this is an INCREASE
+    if (getCurrentValue != null) {
+      final current = getCurrentValue();
+      final delta = value - current;
+
+      if (delta > 0) {
+        // Prepare keys for ProductRepository
+        // category is the productId
+        // weightKey needs to be constructed carefully: subItem|weight (encoded)
+        String encode(String s) => s.trim().replaceAll('.', '_').replaceAll('/', '_');
+        
+        final safeSub = subItem.isEmpty ? '__shared__' : encode(subItem);
+        final safeWeight = encode(weight);
+        final weightKey = '$safeSub|$safeWeight';
+
+        final repo = ProductRepository();
+        
+        // Allocate to pending orders first
+        await repo.allocateManualReceive(category, weightKey, delta);
+        
+        // ProductRepository.allocateManualReceive ALREADY updates the product doc
+        // for both allocated amounts (via receiveShipment) AND unallocated amounts (via manual txn).
+        // Therefore we DO NOT need to call ref.set() here if we used the repo.
+        return;
+      }
+    }
+    
+    // Fallback: Normal set/update for decrease or no-change (or if logic skipped)
+    await ref.set({
+      item: {
+        subItem: {weight: value}
+      }
+    }, SetOptions(merge: true));
   }
 
   String? _getMissingWeightsMessage({
@@ -192,12 +225,20 @@ class InventoryScreen extends StatelessWidget {
                                             return null;
                                           },
                                           setValue: ({required subItem, required weight, required value}) async {
+                                            // Capture current value before update
+                                            int currentVal = 0;
+                                            final m = freshItemMap[subItem];
+                                            if (m is Map && m[weight] is num) {
+                                              currentVal = (m[weight] as num).toInt();
+                                            }
+
                                             await _setInventoryQuantity(
                                               category: category,
                                               item: item,
                                               subItem: subItem,
                                               weight: weight,
                                               value: value,
+                                              getCurrentValue: () => currentVal,
                                             );
                                           },
                                         );

@@ -13,7 +13,7 @@ class AppTheme {
     cardColor: const Color(0xFF8ABEB7),
     dividerColor: const Color(0xFF7AA89E),
     highlightColor: const Color(0xFF7AA89E),
-    dialogTheme: const DialogTheme(
+    dialogTheme: const DialogThemeData(
       backgroundColor: highlightBackground,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -35,6 +35,15 @@ class AppTheme {
     textSelectionTheme: const TextSelectionThemeData(
       cursorColor: Colors.black,
       selectionHandleColor: Colors.black,
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const Color(0xFFC6E6DA);
+        }
+        return Colors.transparent; // Use default for unselected or transparent
+      }),
+      checkColor: WidgetStateProperty.all(Colors.black),
     ),
   );
 

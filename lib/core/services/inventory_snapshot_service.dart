@@ -56,11 +56,25 @@ class InventorySnapshotService {
         for (final it in items) {
           final wk = it['weightKey'] as String?;
           if (wk == null) continue;
+          
+          // Decode encoded parts to match inventory keys
+          // weightKey is often "sub_item|weight" or "__shared__|weight" (encoded)
+          String decodedWk;
+          if (wk.contains('|')) {
+             final parts = wk.split('|');
+             final s = parts[0] == '__shared__' ? '' : _decodeKey(parts[0]);
+             final w = _decodeKey(parts[1]);
+             decodedWk = '$s|$w';
+          } else {
+             // fallback if no pipe found
+             decodedWk = _decodeKey(wk);
+          }
+
           final ordered = (it['qtyOrdered'] ?? 0) as int;
           final received = (it['qtyReceived'] ?? 0) as int;
           final out = ordered - received;
           if (out <= 0) continue;
-          pending[wk] = (pending[wk] ?? 0) + out;
+          pending[decodedWk] = (pending[decodedWk] ?? 0) + out;
         }
       }
 
@@ -102,9 +116,12 @@ class InventorySnapshotService {
                 return;
               }
 
-              final toOrder = threshold - (quantity + pendingQty);
+              // Filter: Only include if current stock is below threshold (ignoring pending)
+              // This ensures the item stays in the list even if a pending order covers the deficit.
+              if (quantity < threshold) {
+                final deficit = threshold - (quantity + pendingQty);
+                final toOrder = deficit > 0 ? deficit : 0;
 
-              if (toOrder > 0) {
                 rows.add(ReorderRow(
                   category: category,
                   item: item,

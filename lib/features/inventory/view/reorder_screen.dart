@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:goldventory/core/services/inventory_snapshot_service.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
+import 'package:goldventory/core/widgets/shimmer_loading.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:goldventory/app/routes.dart';
 import '../../../../app/theme.dart';
-import '../../../core/services/threshold_service.dart';
+
+import '../../../../global/global_state.dart';
 
 class ReorderScreen extends StatefulWidget {
   const ReorderScreen({super.key});
@@ -39,10 +41,19 @@ class _ReorderScreenState extends State<ReorderScreen> {
     return '$safeSub|$safeWeight';
   }
 
+  late Stream<List<ReorderRow>> _reorderStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final globalState = Provider.of<GlobalState>(context, listen: false);
+    _reorderStream = InventorySnapshotService(thresholdService: globalState.thresholds).streamReorderRows();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final thresholdService = Provider.of<ThresholdService>(context, listen: false);
-    final snapshotService = InventorySnapshotService(thresholdService: thresholdService);
+    // Listen to GlobalState for loading changes
+    final globalState = Provider.of<GlobalState>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -60,12 +71,34 @@ class _ReorderScreenState extends State<ReorderScreen> {
       ),
       body: Padding(
         padding: Responsive.screenPadding(context),
-        child: StreamBuilder<List<ReorderRow>>(
-          stream: snapshotService.streamReorderRows(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        child: globalState.isLoading
+            ? ShimmerLoading.list(
+                itemCount: 5,
+                itemBuilder: (context, index) => Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  height: 60,
+                  decoration: BoxDecoration(
+                     color: AppColors.shimmerBase,
+                     borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              )
+            : StreamBuilder<List<ReorderRow>>(
+                stream: _reorderStream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return ShimmerLoading.list(
+                      itemCount: 5,
+                      itemBuilder: (context, index) => Container(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        height: 60,
+                        decoration: BoxDecoration(
+                           color: AppColors.shimmerBase,
+                           borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }
 
             final rows = snapshot.data ?? [];
             if (rows.isEmpty) {
@@ -85,10 +118,14 @@ class _ReorderScreenState extends State<ReorderScreen> {
                 final title = rowsForItem.first.item;
 
                 return Card(
-                  color: const Color(0xFFC6E6DA),
+                  color: AppColors.inventoryCardBackground,
                   child: ExpansionTile(
+                    key: ValueKey(entry.key),
+                    maintainState: true,
                     title: Text(title),
                     backgroundColor: AppTheme.highlightBackground,
+                    iconColor: Colors.black,
+                    collapsedIconColor: Colors.black,
                     children: [
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -104,15 +141,19 @@ class _ReorderScreenState extends State<ReorderScreen> {
                             final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
                             _selected.putIfAbsent(rowKey, () => false);
 
+                            final isOrderable = r.toOrder > 0;
+
                             return DataRow(cells: [
                               DataCell(Checkbox(
                                 value: _selected[rowKey],
-                                onChanged: (v) => setState(() => _selected[rowKey] = v ?? false),
+                                onChanged: isOrderable 
+                                    ? (v) => setState(() => _selected[rowKey] = v ?? false)
+                                    : null,
                               )),
                               DataCell(Text(r.subItem.replaceAll('_', ' '))),
                               DataCell(Text('${r.weight} g')),
-                              DataCell(Text(r.toOrder.toString())),
-                              DataCell(Text(r.pending.toString())),
+                              DataCell(Text(r.toOrder > 0 ? r.toOrder.toString() : '')),
+                              DataCell(Text(r.pending > 0 ? r.pending.toString() : '')),
                             ]);
                           }).toList(),
                         ),
@@ -125,6 +166,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
           },
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Theme.of(context).primaryColor,
         onPressed: () async {
@@ -133,7 +175,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
           final List<Map<String, dynamic>> selectedRows = [];
 
           // Need to get the latest rows from the snapshot service
-          final thresholdService = Provider.of<ThresholdService>(context, listen: false);
+          final globalState = Provider.of<GlobalState>(context, listen: false);
+          final thresholdService = globalState.thresholds;
           final snapshotService = InventorySnapshotService(thresholdService: thresholdService);
           final rows = await snapshotService.streamReorderRows().first;
 
@@ -174,6 +217,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
 
           // Create order in Firestore using snapshot-based payload
           final orderItems = selectedRows.map((r) => {
+            'productId': r['category'], // IMPORTANT: productId IS the category name in this app structure
             'category': r['category'],
             'item': r['item'],
             'subItem': r['subItem'],
