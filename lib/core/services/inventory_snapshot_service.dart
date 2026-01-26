@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'package:async/async.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:goldventory/core/services/threshold_service.dart';
 
@@ -43,9 +42,8 @@ class InventorySnapshotService {
         .where('status', whereIn: ['pending', 'partial'])
         .snapshots();
 
-    return StreamZip([inventoryStream, ordersStream]).map((events) {
-      final invSnap = events[0];
-      final ordersSnap = events[1];
+    return Rx.combineLatest2(inventoryStream, ordersStream, (invSnap, ordersSnap) {
+
 
       // pending: category|item|subItem|weight -> qty
       final Map<String, int> pending = {};

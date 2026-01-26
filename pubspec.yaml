@@ -29,6 +29,7 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   async: ^2.11.0
+  rxdart: ^0.28.0
   flutter:
     sdk: flutter
   cloud_firestore: ^6.0.3

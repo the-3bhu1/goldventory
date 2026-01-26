@@ -48,12 +48,12 @@ class InventoryViewModel extends ChangeNotifier {
   /// ProductRepository.allocateManualReceive(...) helper. The repository will
   /// update orders and product weights atomically. After allocation we notify
   /// listeners so UI streams refresh.
-  Future<void> handleManualIncrease(String productId, String weightKey, int delta) async {
+  Future<void> handleManualIncrease(String productId, String itemName, String weightKey, int delta) async {
     _assertNotShared(weightKey);
     if (delta <= 0) return;
 
     try {
-      final result = await _repo.allocateManualReceive(productId, weightKey, delta);
+      final result = await _repo.allocateManualReceive(productId, itemName, weightKey, delta);
 
       // show summary to user if possible
       try {

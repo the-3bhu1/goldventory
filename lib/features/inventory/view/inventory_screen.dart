@@ -52,7 +52,7 @@ class InventoryScreen extends StatelessWidget {
         final repo = ProductRepository();
         
         // Allocate to pending orders first
-        await repo.allocateManualReceive(category, weightKey, delta);
+        await repo.allocateManualReceive(category, item, weightKey, delta);
         
         // ProductRepository.allocateManualReceive ALREADY updates the product doc
         // for both allocated amounts (via receiveShipment) AND unallocated amounts (via manual txn).

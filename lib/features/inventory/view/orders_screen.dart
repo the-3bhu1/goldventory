@@ -73,8 +73,17 @@ class OrdersScreen extends StatelessWidget {
                 final data = d.data();
                 final created = (data['createdAt'] as Timestamp?)?.toDate();
                 final expected = (data['expectedDelivery'] as Timestamp?)?.toDate();
-                // prefer friendly orderName if present
-                final displayOrderTitle = (data['orderName'] as String?) ?? (created != null ? '${created.day.toString().padLeft(2,'0')}-${created.month.toString().padLeft(2,'0')}-${created.year} ${created.hour.toString().padLeft(2,'0')}:${created.minute.toString().padLeft(2,'0')}' : 'Order ${d.id}');
+                // Form "Order: DD-MM-YYYY"
+                String? title;
+                if (created != null) {
+                  final dd = created.day.toString().padLeft(2, '0');
+                  final mm = created.month.toString().padLeft(2, '0');
+                  final yyyy = created.year.toString();
+                  title = 'Order: $dd-$mm-$yyyy';
+                } else {
+                  title = data['orderName'] as String?;
+                }
+                final displayOrderTitle = title ?? 'Order ${d.id}';
                 return ListTile(
                   title: Text(displayOrderTitle),
                   subtitle: Text(

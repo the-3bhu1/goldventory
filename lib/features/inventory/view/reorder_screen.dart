@@ -242,11 +242,9 @@ class _ReorderScreenState extends State<ReorderScreen> {
             }
           });
 
-          // Create a human-friendly order name (DD-MM-YYYY HH:MM) for display
+          // Create a human-friendly order name (DD-MM-YYYY) for display
           final nowPlaced = DateTime.now().toLocal();
-          final hh = nowPlaced.hour.toString().padLeft(2, '0');
-          final mm = nowPlaced.minute.toString().padLeft(2, '0');
-          final orderDisplayName = '${_formatDateDdMmYyyy(nowPlaced)} $hh:$mm';
+          final orderDisplayName = _formatDateDdMmYyyy(nowPlaced);
 
           // Persist the display name onto the order document so other screens can show it
           try {

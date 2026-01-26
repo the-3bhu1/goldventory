@@ -14,6 +14,7 @@ class ReceiveOrderScreen extends StatefulWidget {
 }
 
 class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
+  Map<int, String?> _errors = {};
   Map<int, TextEditingController> _controllers = {};
   Map<int, int> _maxAllowed = {}; // idx -> remaining pending
   Map<int, Map<String, dynamic>> _orderItemsIndexed = {};
@@ -54,6 +55,7 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
       _controllers.forEach((_, c) => c.dispose());
       _controllers = {};
       _maxAllowed = {};
+      _errors = {};
 
       for (var i = 0; i < items.length; i++) {
         final it = items[i];
@@ -87,6 +89,12 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
   }
 
   Future<void> _submitReceive() async {
+    // Check for errors
+    if (_errors.values.any((e) => e != null)) {
+      Helpers.showSnackBar('Please fix errors before submitting');
+      return;
+    }
+
     // build receivedItems list in the expected shape for receiveShipment
     final List<Map<String, dynamic>> receivedItems = [];
     for (final entry in _orderItemsIndexed.entries) {
@@ -100,6 +108,7 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
         receivedItems.add({
           'orderId': widget.orderId,
           'productId': item['productId'],
+          'item': item['item'],
           'weightKey': item['weightKey'],
           'qtyReceivedNow': toSubmit,
         });
@@ -129,73 +138,115 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: Text('Receive Order')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: CircularProgressIndicator(color: Colors.black)),
       );
     }
     final created = (_orderData?['createdAt'] as Timestamp?)?.toDate();
 
     // prefer human-friendly orderName if present, otherwise fall back to createdAt formatting
-    String formatDateDdMmYyyyHm(DateTime d) {
+    String formatDateDdMmYyyy(DateTime d) {
       final dd = d.day.toString().padLeft(2, '0');
       final mm = d.month.toString().padLeft(2, '0');
       final yyyy = d.year.toString();
-      final hh = d.hour.toString().padLeft(2, '0');
-      final min = d.minute.toString().padLeft(2, '0');
-      return '$dd-$mm-$yyyy $hh:$min';
+      return '$dd-$mm-$yyyy';
     }
 
-    final orderName = (_orderData?['orderName'] as String?) ?? (created != null ? formatDateDdMmYyyyHm(created) : 'Order ${widget.orderId}');
+    // Use Date Only for heading as requested, ignoring the stored time-based orderName if we have createdAt
+    final orderName = created != null ? formatDateDdMmYyyy(created) : ((_orderData?['orderName'] as String?) ?? 'Order ${widget.orderId}');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Receive Order')),
-      body: Padding(
-        padding: Responsive.screenPadding(context),
-        child: Column(
-          children: [
-            ListTile(
-              title: Text(orderName),
-              subtitle: Text('Created: ${created != null ? created.toLocal().toString().split('.')[0] : '—'}'),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.separated(
-                itemCount: _orderItemsIndexed.length,
-                separatorBuilder: (_, __) => const Divider(),
-                itemBuilder: (context, index) {
-                  final item = _orderItemsIndexed[index]!;
-                  final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
-                  final qtyReceived = (item['qtyReceived'] ?? 0) as int;
-                  final remaining = (qtyOrdered - qtyReceived);
-                  final productId = item['productId'] ?? '';
-                  final encoded = item['weightKey'] ?? '';
-                  final parts = encoded.split('|');
-                  final weightKey =
-                      '${parts[0] == '__shared__' ? '' : parts[0].replaceAll('_', '.')}|${parts[1].replaceAll('_', '.')}';
-                  // prefer productName stored on the order item, otherwise derive from productId
-                  String titleCase(String s) => s.split(' ').map((w) => w.isNotEmpty ? (w[0].toUpperCase() + w.substring(1)) : w).join(' ');
-                  final displayNameRaw = (item['productName'] as String?) ?? (productId as String);
-                  final displayName = titleCase(displayNameRaw.replaceAll('_', ' '));
-                  return ListTile(
-                    title: Text(
-                      '$displayName - ${weightKey.split('|')[0].replaceAll('_', ' ')} - ${weightKey.split('|')[1].replaceAll('_', '').trim()}g',
-                    ),
-                    subtitle: Text('Ordered: $qtyOrdered  •  Received: $qtyReceived  •  Pending: $remaining'),
-                    trailing: SizedBox(
-                      width: 110,
-                      child: TextField(
-                        controller: _controllers[index],
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Receive now',
-                          hintText: '0',
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Padding(
+          padding: Responsive.screenPadding(context),
+          child: Column(
+            children: [
+              ListTile(
+                title: Text(orderName),
+                subtitle: Text('Created: ${created != null ? created.toLocal().toString().split('.')[0] : '—'}'),
               ),
-            ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _orderItemsIndexed.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final item = _orderItemsIndexed[index]!;
+                    final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
+                    final qtyReceived = (item['qtyReceived'] ?? 0) as int;
+                    final remaining = (qtyOrdered - qtyReceived);
+                    final productId = item['productId'] ?? '';
+                    final encoded = item['weightKey'] ?? '';
+                    final parts = encoded.split('|');
+                    final weightKey =
+                        '${parts[0] == '__shared__' ? '' : parts[0].replaceAll('_', '.')}|${parts[1].replaceAll('_', '.')}';
+                    String titleCase(String s) => s.split(' ').map((w) => w.isNotEmpty ? (w[0].toUpperCase() + w.substring(1)) : w).join(' ');
+                    final displayNameRaw = (item['productName'] as String?) ?? (productId as String);
+                    final displayName = titleCase(displayNameRaw.replaceAll('_', ' '));
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$displayName - ${weightKey.split('|')[0].replaceAll('_', ' ')} - ${weightKey.split('|')[1].replaceAll('_', '').trim()}g',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Ordered: $qtyOrdered  •  Received: $qtyReceived  •  Pending: $remaining',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            width: 120,
+                            child: TextField(
+                              controller: _controllers[index],
+                              keyboardType: TextInputType.number,
+                              onChanged: (val) {
+                                final n = int.tryParse(val);
+                                if (n != null && n > remaining) {
+                                  setState(() {
+                                    _errors[index] = 'Max $remaining';
+                                  });
+                                } else {
+                                  if (_errors.containsKey(index)) {
+                                    setState(() {
+                                      _errors.remove(index);
+                                    });
+                                  }
+                                }
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Receive now',
+                                hintText: '0',
+                                errorText: _errors[index],
+                                border: const OutlineInputBorder(),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.black),
+                                ),
+                                labelStyle: const TextStyle(color: Colors.black),
+                                floatingLabelStyle: const TextStyle(color: Colors.black),
+                                // isDense: true, // Optional: reduces default height if desired
+                              ),
+                              cursorColor: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _loading ? null : _submitReceive,
@@ -206,6 +257,7 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -246,8 +246,14 @@ class ProductRepository {
           orderItems[idx] = item;
 
           // Update product nested map (type.nestedKey) only
+          // Update product nested map (Item.SubItem.Weight)
+          // `item` here is the Order Item map, which contains 'item' (the Item Name)
+          // `prodData` is the Category document data
           final prodSnap = productSnaps[prodId]!;
           final prodData = Map<String, dynamic>.from(prodSnap.data() as Map<String, dynamic>);
+          
+          final itemName = item['item'] as String;
+          final safeItemName = _encodeKey(itemName);
 
           String type;
           String nestedKey;
@@ -260,12 +266,14 @@ class ProductRepository {
             nestedKey = _encodeKey(weightKey);
           }
 
-          final typeMap = Map<String, dynamic>.from(prodData[type] ?? {});
+          // Traverse: Category -> Item -> SubItem -> Weight
+          final itemMap = Map<String, dynamic>.from(prodData[safeItemName] ?? {});
+          final typeMap = Map<String, dynamic>.from(itemMap[type] ?? {});
           final prevQty = (typeMap[nestedKey] ?? 0) as int;
           final newQty = prevQty + acceptedReceive;
 
           final productRef = _db.doc(prodId);
-          tx.update(productRef, {'$type.$nestedKey': newQty});
+          tx.update(productRef, {'$safeItemName.$type.$nestedKey': newQty});
 
           // audit event
           final auditRef = productRef.collection('events').doc();
@@ -294,7 +302,7 @@ class ProductRepository {
   /// Allocate manual receive delta to oldest pending orders (FIFO). Any remainder
   /// will be added to product weights and an audit event created.
   Future<Map<String, int>> allocateManualReceive(
-      String productId, String weightKey, int delta) async {
+      String productId, String itemName, String weightKey, int delta) async {
     if (delta <= 0) return {'allocated': 0, 'unallocated': 0};
     final db = FirebaseFirestore.instance;
 
@@ -316,8 +324,11 @@ class ProductRepository {
       for (final it in items) {
         if (remaining <= 0) break;
         final pid = it['productId'] as String? ?? '';
+        final itemVal = it['item'] as String? ?? ''; // Matches 'item' in order structure
         final wk = it['weightKey'] as String? ?? '';
-        if (pid != productId || wk != weightKey) continue;
+        
+        // Strict matching: ProductID (Category), Item Name, and WeightKey must match
+        if (pid != productId || itemVal != itemName || wk != weightKey) continue;
 
         final qtyOrdered = (it['qtyOrdered'] ?? 0) as int;
         final qtyReceived = (it['qtyReceived'] ?? 0) as int;
@@ -327,7 +338,8 @@ class ProductRepository {
         final alloc = remaining <= outstanding ? remaining : outstanding;
         allocations.add({
           'orderId': doc.id,
-          'productId': productId,
+          'productId': productId, // Category
+          // receiveShipment will extract 'item' from the order document's items list itself
           'weightKey': weightKey,
           'qtyReceivedNow': alloc,
         });
@@ -347,6 +359,8 @@ class ProductRepository {
         final snap = await tx.get(productRef);
         if (!snap.exists) throw Exception('Product $productId not found');
         final prodData = Map<String, dynamic>.from(snap.data() as Map<String, dynamic>);
+        
+        final safeItemName = _encodeKey(itemName);
 
         // determine nested type/key from weightKey
         String type; String nestedKey;
@@ -359,11 +373,12 @@ class ProductRepository {
           nestedKey = _encodeKey(weightKey);
         }
 
-        final typeMap = Map<String, dynamic>.from(prodData[type] ?? {});
+        final itemMap = Map<String, dynamic>.from(prodData[safeItemName] ?? {});
+        final typeMap = Map<String, dynamic>.from(itemMap[type] ?? {});
         final prevQty = (typeMap[nestedKey] ?? 0) as int;
         final newQty = prevQty + remaining;
 
-        tx.update(productRef, {'$type.$nestedKey': newQty});
+        tx.update(productRef, {'$safeItemName.$type.$nestedKey': newQty});
 
         // audit event
         final auditRef = productRef.collection('events').doc();
@@ -371,6 +386,7 @@ class ProductRepository {
           'type': 'manual_receive',
           'qty': remaining,
           'weightKey': weightKey,
+          'item': itemName,
           'note': 'auto_allocated_excess',
           'createdAt': FieldValue.serverTimestamp(),
         });
