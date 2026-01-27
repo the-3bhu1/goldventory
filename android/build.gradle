@@ -23,6 +23,25 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    
+    // Fix: Force all plugins to use Java 17 compatibility to avoid "obsolete source value 8" warnings
+    def configureAndroid = {
+        // App is already configured in app/build.gradle and finalized. Skip it.
+        if (project.name != "app" && project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureAndroid()
+    } else {
+        project.afterEvaluate(configureAndroid)
+    }
 }
 
 tasks.register("clean", Delete) {

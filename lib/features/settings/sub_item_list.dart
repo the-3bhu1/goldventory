@@ -135,9 +135,25 @@ class SubItemList extends StatelessWidget {
                     );
 
                     if (confirmed == true) {
-                      vm.deleteSubItem(category, item, s);
                       if (context.mounted) {
-                        Helpers.showSnackBar('Sub-item deleted');
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                        );
+                      }
+
+                      try {
+                        await vm.deleteSubItem(category, item, s);
+                         if (context.mounted) {
+                          Navigator.of(context).pop(); // Pop loading
+                          Helpers.showSnackBar('Sub-item deleted');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.of(context).pop(); // Pop loading
+                          Helpers.showSnackBar('Error: $e');
+                        }
                       }
                     }
                   },

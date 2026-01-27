@@ -534,4 +534,158 @@ class ProductRepository {
       print('Error deleting product: $e');
     }
   }
+
+  /// Permanently delete a category and all associated data:
+  /// 1. Inventory document
+  /// 2. Thresholds document
+  /// 3. Remove items of this category from any Pending/Partial orders
+  Future<void> deleteCategoryCascade(String category) async {
+    final safeCat = _encodeKey(category);
+    final db = FirebaseFirestore.instance;
+
+    print('Starting cascade delete for category: $category ($safeCat)');
+
+    // 1. Delete Inventory Document
+    try {
+      await db.collection('inventory').doc(safeCat).delete();
+      print('Deleted inventory/$safeCat');
+    } catch (e) {
+      print('Error deleting inventory doc: $e');
+    }
+
+    // 2. Delete Thresholds Document
+    try {
+      await db.collection('thresholds').doc(safeCat).delete();
+      print('Deleted thresholds/$safeCat');
+    } catch (e) {
+      print('Error deleting thresholds doc: $e');
+    }
+
+    // 3. Clean up Orders
+    await _cleanupOrders((item) => item['productId'] == category);
+  }
+
+  /// Cascade delete for an Item:
+  /// 1. Remove item field from Inventory doc
+  /// 2. Remove item field from Thresholds doc
+  /// 3. Remove items from Pending Orders matching category & item
+  Future<void> deleteItemCascade(String category, String item) async {
+    final safeCat = _encodeKey(category);
+    final safeItem = _encodeKey(item);
+    final db = FirebaseFirestore.instance;
+
+    print('Starting cascade delete for item: $category -> $item');
+
+    // 1. Inventory: Remove field (safeItem) from document (safeCat)
+    try {
+      await db.collection('inventory').doc(safeCat).update({
+        safeItem: FieldValue.delete(),
+      });
+      print('Deleted inventory item field: $safeItem');
+    } catch (e) {
+      print('Error updating inventory for item delete: $e');
+    }
+
+    // 2. Thresholds: Remove field (safeItem) from document (safeCat)
+    try {
+      await db.collection('thresholds').doc(safeCat).update({
+        safeItem: FieldValue.delete(),
+      });
+      print('Deleted thresholds item field: $safeItem');
+    } catch (e) {
+      print('Error updating thresholds for item delete: $e');
+    }
+
+    // 3. Clean up Orders
+    // Match: productId == category AND item == (raw item name)
+    await _cleanupOrders((orderItem) {
+      return orderItem['productId'] == category && orderItem['item'] == item;
+    });
+  }
+
+  /// Cascade delete for a SubItem:
+  /// 1. Remove subItem key from Inventory nested map
+  /// 2. Remove subItem key from Thresholds nested map
+  /// 3. Remove items from Pending Orders matching category, item & subItem identifier
+  Future<void> deleteSubItemCascade(String category, String item, String subItem) async {
+    final safeCat = _encodeKey(category);
+    final safeItem = _encodeKey(item);
+    final safeSub = _encodeKey(subItem);
+    final db = FirebaseFirestore.instance;
+
+    print('Starting cascade delete for subitem: $category -> $item -> $subItem');
+
+    // 1. Inventory: Remove nested key item.subItem
+    // Firestore dot notation allows updating nested fields
+    final fieldPath = '$safeItem.$safeSub';
+    try {
+      await db.collection('inventory').doc(safeCat).update({
+        fieldPath: FieldValue.delete(),
+      });
+      print('Deleted inventory subitem field: $fieldPath');
+    } catch (e) {
+      print('Error updating inventory for subitem delete: $e');
+    }
+
+    // 2. Thresholds: Remove nested key item.subItem
+    try {
+      await db.collection('thresholds').doc(safeCat).update({
+        fieldPath: FieldValue.delete(),
+      });
+      print('Deleted thresholds subitem field: $fieldPath');
+    } catch (e) {
+      print('Error updating thresholds for subitem delete: $e');
+    }
+
+    // 3. Clean up Orders
+    // Match: productId == category AND item == item AND weightKey starts with safeSub|
+    await _cleanupOrders((orderItem) {
+      if (orderItem['productId'] != category) return false;
+      if (orderItem['item'] != item) return false;
+      
+      final weightKey = orderItem['weightKey'] as String? ?? '';
+      // weightKey format is usually "SubItem|Weight"
+      // We check if it starts with encoded SubItem
+      // NOTE: weightKey construction in UI uses _encodeKey(subItem)
+      return weightKey.startsWith('$safeSub|');
+    });
+  }
+
+  /// Helper to scan and clean pending orders based on a predicate
+  Future<void> _cleanupOrders(bool Function(Map<String, dynamic>) shouldRemove) async {
+    final db = FirebaseFirestore.instance;
+    try {
+      final ordersSnap = await db
+          .collection('orders')
+          .where('status', whereIn: ['pending', 'partial'])
+          .get();
+
+      int deletedOrders = 0;
+      int updatedOrders = 0;
+
+      for (final doc in ordersSnap.docs) {
+        final data = doc.data();
+        final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+        
+        final initialCount = items.length;
+        items.removeWhere(shouldRemove);
+        
+        if (items.length != initialCount) {
+          if (items.isEmpty) {
+            await doc.reference.delete();
+            deletedOrders++;
+          } else {
+            await doc.reference.update({
+              'items': items,
+              'lastUpdatedAt': FieldValue.serverTimestamp(),
+            });
+            updatedOrders++;
+          }
+        }
+      }
+      print('Order cleanup finished: Deleted $deletedOrders empty orders, Updated $updatedOrders orders.');
+    } catch (e) {
+      print('Error cleaning up orders: $e');
+    }
+  }
 }

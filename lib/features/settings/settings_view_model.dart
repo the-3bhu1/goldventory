@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:goldventory/global/global_state.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:goldventory/data/repositories/product_repository.dart';
 
 enum WeightMode { shared, perSubItem }
 
@@ -357,8 +358,18 @@ class SettingsViewModel extends ChangeNotifier {
     unawaited(_commit());
   }
 
-  /// Remove a category locally
-  void removeCategory(String category) {
+  /// Remove a category locally and cascade delete from backend
+  Future<void> removeCategory(String category) async {
+    // Cascade delete from backend (Inventory, Thresholds, Orders)
+    // We instantiate repo here since SettingsViewModel doesn't hold it permanently
+    // (though strict DI would be better, this is pragmatic for this VM)
+    // NOTE: This is destructive and irreversible.
+    await ProductRepository().deleteCategoryCascade(category);
+
+    // CRITICAL: Remove from GlobalState to prevent resurrection during _commit()
+    globalState.thresholds.asNestedMap().remove(category);
+
+    // Remove from local state
     _deleteNode(parent: _local, key: category);
   }
 
@@ -623,11 +634,23 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   /// Remove an item and all its subItems
-  void deleteItem(String category, String item) {
+  Future<void> deleteItem(String category, String item) async {
+    // 1. Cascade Delete from Backend
+    await ProductRepository().deleteItemCascade(category, item);
+
+    // 2. Remove from Local State
     final catMap = _local[category];
     if (catMap == null) return;
 
     _deleteNode(parent: catMap, key: item);
+
+    // 3. Remove from Global State (prevent resurrection)
+    globalState.thresholds.asNestedMap()[category]?.remove(item);
+    
+    // Check if category is now empty in GlobalState
+    if (globalState.thresholds.asNestedMap()[category]?.isEmpty ?? false) {
+      globalState.thresholds.asNestedMap().remove(category);
+    }
 
     if (catMap.isEmpty) {
       _local.remove(category);
@@ -646,25 +669,33 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   /// Remove only a subItem under an item
-  void deleteSubItem(String category, String item, String subItem) {
-
+  Future<void> deleteSubItem(String category, String item, String subItem) async {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return;
 
-    // 1. Remove from local state (Manual removal to avoid premature _commit() from _deleteNode)
+    // 1. Cascade Delete from Backend
+    // This handles Inventory and Thresholds deletion in Firestore, plus Order cleanup.
+    await ProductRepository().deleteSubItemCascade(category, item, subItem);
+
+    // 2. Remove from Local State
     itemMap.remove(subItem);
     
-    // 2. Remove from GlobalState (CRITICAL: Must happen BEFORE _commit/save)
+    // 3. Remove from Global State (CRITICAL: Must happen BEFORE _commit/save to prevent resurrection)
     final globalItemMap = globalState.thresholds.asNestedMap()[category]?[item];
     if (globalItemMap != null) {
       globalItemMap.remove(subItem);
       // Clean up parent if empty
       if (globalItemMap.isEmpty) {
         globalState.thresholds.asNestedMap()[category]?.remove(item);
+        
+        // Clean up category if empty
+        if (globalState.thresholds.asNestedMap()[category]?.isEmpty ?? false) {
+           globalState.thresholds.asNestedMap().remove(category);
+        }
       }
     }
 
-    // 3. Check for empty parents in local state from the bottom up
+    // 4. Check for empty parents in local state from the bottom up
     if (itemMap.isEmpty) {
       _local[category]?.remove(item);
     }
@@ -675,23 +706,12 @@ class SettingsViewModel extends ChangeNotifier {
     _dirty = true;
     notifyListeners();
     
-    // 4. Persist to Thresholds (Overwrite)
-    // Now that GlobalState is clean, this will write the document WITHOUT the deleted sub-item
+    // 5. Persist the *removal* from structure to GlobalState persistence
+    // Since we manually deleted from Firestore above via Repository, 
+    // we use _commit() to sync the *absence* of the key in the in-memory GlobalState.
     unawaited(_commit());
-
-    final safeCat = _encodeKey(category);
-    final safeItem = _encodeKey(item);
-    final safeSub = _encodeKey(subItem);
-
-    FirebaseFirestore.instance
-        .collection('inventory')
-        .doc(safeCat)
-        .set({
-          safeItem: {
-            safeSub: FieldValue.delete(),
-          }
-        }, SetOptions(merge: true));
   }
+
 
   /// Set weights for a specific subItem under an item.
   /// This is used when WeightMode == perSubItem.

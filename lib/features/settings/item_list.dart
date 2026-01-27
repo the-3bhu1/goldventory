@@ -152,8 +152,26 @@ class _ItemListState extends State<ItemList> {
                                           );
 
                                           if (confirmed == true) {
-                                            vm.deleteItem(widget.category, item);
-                                            Helpers.showSnackBar('Item removed');
+                                            if (context.mounted) {
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                                              );
+                                            }
+
+                                            try {
+                                              await vm.deleteItem(widget.category, item);
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop(); // Pop loading
+                                                Helpers.showSnackBar('Item removed');
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                Navigator.of(context).pop(); // Pop loading
+                                                Helpers.showSnackBar('Error: $e');
+                                              }
+                                            }
                                           }
                                           break;
                                       }
@@ -206,6 +224,12 @@ class _ItemListState extends State<ItemList> {
                                     icon: const Icon(Icons.view_column),
                                     tooltip: 'Edit weights',
                                     onPressed: () {
+                                      // Fix: Prevent weight config if no sub-items
+                                      if (vm.subItemsFor(widget.category, item).isEmpty) {
+                                        Helpers.showSnackBar('Please add sub-items before configuring weights.');
+                                        return;   
+                                      }
+
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (_) => ChangeNotifierProvider.value(

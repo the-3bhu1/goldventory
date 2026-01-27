@@ -69,7 +69,7 @@ class CategoryList extends StatelessWidget {
                     context: context,
                     builder: (dctx) => AlertDialog(
                       title: Text('Delete "$cat"?'),
-                      content: const Text('This will remove the category and all its items from local changes.'),
+                      content: const Text('This will remove the category and all its items from local changes. This cannot be undone.'),
                       actions: [
                         TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
                         ElevatedButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
@@ -77,8 +77,29 @@ class CategoryList extends StatelessWidget {
                     ),
                   );
                   if (confirmed == true) {
-                    vm.removeCategory(cat);
-                    Helpers.showSnackBar('Category removed');
+                    if (context.mounted) {
+                      // Show loading dialog
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                      );
+                    }
+                    
+                    try {
+                      await vm.removeCategory(cat);
+                      if (context.mounted) {
+                         // Pop loading dialog
+                        Navigator.of(context).pop(); 
+                        Helpers.showSnackBar('Category removed');
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                         // Pop loading dialog on error
+                        Navigator.of(context).pop();
+                        Helpers.showSnackBar('Error removing category: $e');
+                      }
+                    }
                   }
                 },
               ),
