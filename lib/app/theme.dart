@@ -5,6 +5,12 @@ class AppTheme {
   static final ThemeData lightTheme = ThemeData(
     primaryColor: const Color(0xFF003D33), // Darker Teal for Headers
     brightness: Brightness.light,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF003D33),
+      primary: const Color(0xFF003D33),
+      onPrimary: Colors.white,
+      brightness: Brightness.light,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFFF0F9F8),
       foregroundColor: Color(0xFF003D33),
@@ -13,6 +19,10 @@ class AppTheme {
     cardColor: const Color(0xFFCEEDE4), // Light Teal for Cards
     dividerColor: const Color(0xFFD1EBE8),
     highlightColor: const Color(0xFFB3E0DB),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: Color(0xFF003D33),
+      foregroundColor: Colors.white,
+    ),
     dialogTheme: const DialogThemeData(
       backgroundColor: Color(0xFFF0F8F3),
     ),
@@ -63,6 +73,15 @@ class AppTheme {
   static final ThemeData darkTheme = ThemeData(
     primaryColor: const Color(0xFF00A28E),
     brightness: Brightness.dark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF00A28E),
+      primary: const Color(0xFF00A28E),
+      onPrimary: Colors.white,
+      brightness: Brightness.dark,
+    ).copyWith(
+      secondary: const Color(0xFF00A28E),
+      onSecondary: Colors.white,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF111717),
       foregroundColor: Colors.white,
@@ -71,6 +90,10 @@ class AppTheme {
     cardColor: const Color(0xFF232D2D), // Deep Slate/Teal Card
     dividerColor: const Color(0xFF2D3838),
     highlightColor: const Color(0xFF2D3838),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: Color(0xFF00A28E),
+      foregroundColor: Colors.white,
+    ),
     dialogTheme: const DialogThemeData(
       backgroundColor: Color(0xFF1E2626),
     ),
