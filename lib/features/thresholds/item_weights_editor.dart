@@ -216,34 +216,30 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                 ChoiceChip(
                   label: const Text('Shared weights'),
                   selected: _mode == WeightMode.shared,
-                  selectedColor: AppTheme.highlightBackground,
-                  backgroundColor: Colors.white,
-                  onSelected: _mode == null
-                      ? (_) {
-                          final vm = context.read<ThresholdsViewModel>();
-                          vm.setWeightMode(widget.category, widget.item, WeightMode.shared);
-                          setState(() {
-                            _mode = WeightMode.shared;
-                          });
-                        }
-                      : null,
-                  disabledColor: _mode == WeightMode.shared ? AppTheme.highlightBackground : Colors.grey.shade300,
+                  selectedColor: Theme.of(context).primaryColor,
+                  backgroundColor: AppTheme.getHighlightBackground(context),
+                  checkmarkColor: Colors.white,
+                  onSelected: (_) {
+                    final vm = context.read<ThresholdsViewModel>();
+                    vm.setWeightMode(widget.category, widget.item, WeightMode.shared);
+                    setState(() {
+                      _mode = WeightMode.shared;
+                    });
+                  },
                 ),
                 ChoiceChip(
                   label: const Text('Per sub-item'),
                   selected: _mode == WeightMode.perSubItem,
-                  selectedColor: AppTheme.highlightBackground,
-                  backgroundColor: Colors.white,
-                  onSelected: _mode == null
-                      ? (_) {
-                          final vm = context.read<ThresholdsViewModel>();
-                          vm.setWeightMode(widget.category, widget.item, WeightMode.perSubItem);
-                          setState(() {
-                            _mode = WeightMode.perSubItem;
-                          });
-                        }
-                      : null,
-                  disabledColor: _mode == WeightMode.perSubItem ? AppTheme.highlightBackground : Colors.grey.shade300,
+                  selectedColor: Theme.of(context).primaryColor,
+                  backgroundColor: AppTheme.getHighlightBackground(context),
+                  checkmarkColor: Colors.white,
+                  onSelected: (_) {
+                    final vm = context.read<ThresholdsViewModel>();
+                    vm.setWeightMode(widget.category, widget.item, WeightMode.perSubItem);
+                    setState(() {
+                      _mode = WeightMode.perSubItem;
+                    });
+                  },
                 ),
               ],
             ),
@@ -277,7 +273,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                           runSpacing: 8,
                           children: _sharedWeights.map((w) => Chip(
                             label: Text(w),
-                            backgroundColor: AppTheme.highlightBackground,
+                            backgroundColor: AppTheme.getHighlightBackground(context),
                           )).toList(),
                         ),
                       ),
@@ -345,7 +341,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                               final sorted = [...weights]; // ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
                               return sorted.map((w) => Chip(
                                 label: Text(w),
-                                backgroundColor: AppTheme.highlightBackground,
+                                backgroundColor: AppTheme.getHighlightBackground(context),
                               )).toList();
                             })(),
                           ),

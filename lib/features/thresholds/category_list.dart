@@ -82,7 +82,7 @@ class CategoryList extends StatelessWidget {
                       showDialog(
                         context: context,
                         barrierDismissible: false,
-                        builder: (ctx) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                        builder: (ctx) => const Center(child: CircularProgressIndicator()),
                       );
                     }
                     

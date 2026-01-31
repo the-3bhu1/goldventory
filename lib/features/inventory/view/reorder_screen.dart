@@ -62,6 +62,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
         actions: [
           IconButton(
             tooltip: 'Pending Orders',
+            color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
             icon: const Icon(Icons.receipt_long),
             onPressed: () {
               Navigator.of(context).pushNamed(AppRoutes.orders);
@@ -78,7 +79,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   height: 60,
                   decoration: BoxDecoration(
-                     color: AppColors.shimmerBase,
+                     color: AppColors.shimmerBase(context),
                      borderRadius: BorderRadius.circular(12),
                   ),
                 ),
@@ -93,7 +94,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         height: 60,
                         decoration: BoxDecoration(
-                           color: AppColors.shimmerBase,
+                           color: AppColors.shimmerBase(context),
                            borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -118,14 +119,12 @@ class _ReorderScreenState extends State<ReorderScreen> {
                 final title = rowsForItem.first.item;
 
                 return Card(
-                  color: AppColors.inventoryCardBackground,
+                  color: AppColors.inventoryCardBackground(context),
                   child: ExpansionTile(
                     key: ValueKey(entry.key),
                     maintainState: true,
                     title: Text(title),
-                    backgroundColor: AppTheme.highlightBackground,
-                    iconColor: Colors.black,
-                    collapsedIconColor: Colors.black,
+                    backgroundColor: AppTheme.getHighlightBackground(context),
                     children: [
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -169,6 +168,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         onPressed: () async {
           // Build PDF only from rows the user has checked
           // Use snapshot rows and _selected to build selectedRows
@@ -330,8 +330,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
 
           await OpenFilex.open(file.path);
         },
-        icon: const Icon(Icons.share, color: Colors.black),
-        label: const Text('Export', style: TextStyle(color: Colors.black)),
+        icon: const Icon(Icons.share),
+        label: const Text('Export'),
       ),
     );
   }

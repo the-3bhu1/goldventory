@@ -89,7 +89,7 @@ class _EditableCellState extends State<EditableCell> {
   void _startEditing() {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
-      _backgroundColor = Colors.white;
+      _backgroundColor = Theme.of(context).canvasColor;
     });
     _focusNode.requestFocus();
     _controller.selection = TextSelection.fromPosition(
@@ -111,7 +111,7 @@ class _EditableCellState extends State<EditableCell> {
         height: cellHeight,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
+          border: Border.all(color: Theme.of(context).dividerColor),
           color: _backgroundColor,
         ),
         child: TextField(

@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'theme.dart';
 import 'package:goldventory/app/routes.dart';
 import 'package:goldventory/global/global_state.dart';
@@ -16,13 +17,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Goldventory',
-      debugShowCheckedModeBanner: false,
-      scaffoldMessengerKey: GlobalScaffold.messengerKey,
-      theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.splash,
-      onGenerateRoute: AppRoutes.generateRoute,
+    return Consumer<GlobalState>(
+      builder: (context, globalState, child) {
+        return MaterialApp(
+          title: 'Goldventory',
+          debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: GlobalScaffold.messengerKey,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: globalState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          initialRoute: AppRoutes.splash,
+          onGenerateRoute: AppRoutes.generateRoute,
+        );
+      },
     );
   }
 }

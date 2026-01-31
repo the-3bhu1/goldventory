@@ -18,7 +18,7 @@ class ThresholdsPage extends StatelessWidget {
     final result = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.highlightBackground,
+        backgroundColor: AppTheme.getHighlightBackground(context),
         title: const Text('Create category'),
         content: TextField(
           controller: controller,
@@ -76,7 +76,7 @@ class ThresholdsPage extends StatelessWidget {
                           height: 56, // Match ListTile height + padding
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(6),
-                            color: AppColors.shimmerBase,
+                            color: AppColors.shimmerBase(context),
                           ),
                         ),
                   )
@@ -92,7 +92,7 @@ class ThresholdsPage extends StatelessWidget {
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showCreateCategoryDialog(context),
             backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.black,
+            foregroundColor: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
             child: const Icon(Icons.add),
           ),
         );

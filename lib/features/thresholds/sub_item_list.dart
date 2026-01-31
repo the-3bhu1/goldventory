@@ -149,7 +149,7 @@ class SubItemList extends StatelessWidget {
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
                         );
                       }
 
@@ -177,7 +177,7 @@ class SubItemList extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateSubItemDialog(context, vm),
         backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.black,
+        foregroundColor: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
         child: const Icon(Icons.add),
       ),
     );

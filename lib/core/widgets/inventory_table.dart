@@ -100,10 +100,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
+                            color: AppColors.surfaceVariant(context),
                             border: Border(
-                              right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                              bottom: BorderSide(color: AppColors.borderGrey),
+                              right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
+                              bottom: BorderSide(color: AppColors.borderGrey(context)),
                             ),
                           ),
                           alignment: Alignment.centerLeft,
@@ -121,10 +121,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
+                            color: AppColors.surfaceVariant(context),
                             border: Border(
-                              right: BorderSide(color: AppColors.borderGrey),
-                              bottom: BorderSide(color: AppColors.borderGrey),
+                              right: BorderSide(color: AppColors.borderGrey(context)),
+                              bottom: BorderSide(color: AppColors.borderGrey(context)),
                             ),
                           ),
                           child: Text(
@@ -156,10 +156,10 @@ class _InventoryTableState extends State<InventoryTable> {
                              height: rowHeight,
                              padding: const EdgeInsets.symmetric(horizontal: 12),
                              decoration: BoxDecoration(
-                               color: AppColors.surfaceVariant,
+                               color: AppColors.surfaceVariant(context),
                                border: Border(
-                                 right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                                 bottom: BorderSide(color: AppColors.borderGrey),
+                                 right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
+                                 bottom: BorderSide(color: AppColors.borderGrey(context)),
                                ),
                              ),
                              alignment: Alignment.centerLeft,
@@ -179,16 +179,16 @@ class _InventoryTableState extends State<InventoryTable> {
                                alignment: Alignment.centerLeft,
                                padding: const EdgeInsets.only(left: 12),
                                decoration: BoxDecoration(
-                                 color: Colors.white,
+                                 color: Theme.of(context).cardColor,
                                  border: Border(
-                                   bottom: BorderSide(color: Colors.grey.shade300),
+                                   bottom: BorderSide(color: Theme.of(context).dividerColor),
                                  ),
                                ),
                                child: Text(
                                  'Add weights for ${subItem == 'shared' ? 'Shared' : subItem}',
                                  style: TextStyle(
                                    fontStyle: FontStyle.italic,
-                                   color: Colors.grey.shade600,
+                                   color: AppColors.textGrey(context),
                                    fontSize: fontSize,
                                  ),
                                ),
@@ -215,10 +215,10 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant,
+                              color: AppColors.surfaceVariant(context),
                               border: Border(
-                                right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                                bottom: BorderSide(color: AppColors.borderGrey),
+                                right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
+                                bottom: BorderSide(color: AppColors.borderGrey(context)),
                               ),
                             ),
                             alignment: Alignment.centerLeft,
@@ -236,10 +236,10 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant,
+                              color: AppColors.surfaceVariant(context),
                               border: Border(
-                                right: BorderSide(color: AppColors.borderGrey),
-                                bottom: BorderSide(color: AppColors.borderGrey),
+                                right: BorderSide(color: AppColors.borderGrey(context)),
+                                bottom: BorderSide(color: AppColors.borderGrey(context)),
                               ),
                             ),
                             child: Text(
@@ -262,10 +262,10 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.shimmerBase,
+                            color: AppColors.shimmerBase(context),
                             border: Border(
-                              right: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                              bottom: BorderSide(color: AppColors.borderGrey),
+                              right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
+                              bottom: BorderSide(color: AppColors.borderGrey(context)),
                             ),
                           ),
                           alignment: Alignment.centerLeft,
@@ -335,18 +335,18 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             decoration: BoxDecoration(
                               border: Border(
-                                right: BorderSide(color: Colors.grey.shade300),
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                                right: BorderSide(color: Theme.of(context).dividerColor),
+                                bottom: BorderSide(color: Theme.of(context).dividerColor),
                               ),
                             ),
                             child: EditableCell(
                               initialValue: value,
                               colorResolver: (v) {
                                   // Threshold mode -> always neutral
-                                  if (isThreshold) return Colors.grey.shade100;
+                                  if (isThreshold) return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
                                   
                                   // Inventory mode -> check threshold
-                                  if (v == null) return Colors.grey.shade100;
+                                  if (v == null) return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
   
                                   // Access GlobalState to get the configured threshold
                                   final globalState = Provider.of<GlobalState>(context, listen: false);
@@ -359,15 +359,15 @@ class _InventoryTableState extends State<InventoryTable> {
   
                                   if (threshold == null) {
                                     // No threshold configured -> Grey
-                                    return Colors.grey.shade100;
+                                    return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
                                   }
   
                                   if (v < threshold) {
                                     // Below threshold -> Red
-                                    return Colors.red.shade100;
+                                    return Theme.of(context).brightness == Brightness.light ? Colors.red.shade100 : Colors.red.shade900;
                                   } else {
                                     // At or above threshold -> Green
-                                    return Colors.green.shade100;
+                                    return Theme.of(context).brightness == Brightness.light ? Colors.green.shade100 : Colors.green.shade900;
                                   }
                               },
                               onValueSaved: (parsed) async {

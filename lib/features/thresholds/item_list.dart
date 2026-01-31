@@ -89,7 +89,7 @@ class _ItemListState extends State<ItemList> {
                                     ),
                                   ),
                                   PopupMenuButton<_ItemMenuAction>(
-                                    color: AppTheme.highlightBackground,
+                                    color: AppTheme.getHighlightBackground(context),
                                     icon: const Icon(Icons.more_vert),
                                     onSelected: (action) async {
                                       switch (action) {
@@ -156,7 +156,7 @@ class _ItemListState extends State<ItemList> {
                                               showDialog(
                                                 context: context,
                                                 barrierDismissible: false,
-                                                builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+                                                builder: (_) => const Center(child: CircularProgressIndicator()),
                                               );
                                             }
 
@@ -353,7 +353,7 @@ class _ItemListState extends State<ItemList> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _showCreateItemDialog(context),
-                    icon: const Icon(Icons.add, color: Colors.black),
+                    icon: const Icon(Icons.add),
                     label: const Text('Add item'),
                   ),
                 ),

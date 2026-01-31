@@ -120,7 +120,7 @@ class InventoryScreen extends StatelessWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: AppColors.shimmerBase,
+                      color: AppColors.shimmerBase(context),
                     ),
                  );
                },
@@ -149,10 +149,14 @@ class InventoryScreen extends StatelessWidget {
                 child: ExpansionTile(
                   tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   childrenPadding: const EdgeInsets.only(left: 20, right: 12, bottom: 12),
-                  backgroundColor: AppTheme.highlightBackground,
+                  backgroundColor: AppTheme.getHighlightBackground(context),
                   title: Text(
                     category,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.bold, 
+                      color: Theme.of(context).textTheme.titleLarge?.color
+                    ),
                   ),
                   children: items.isEmpty
                       ? [

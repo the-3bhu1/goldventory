@@ -1,7 +1,4 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'package:goldventory/app/routes.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
@@ -30,29 +27,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        leading: IconButton(
+        leading: Navigator.canPop(context) ? IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => exit(0),
-        ),
+          onPressed: () => Navigator.maybePop(context),
+        ) : null,
         title: const Text(
           'Dashboard',
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(
-            color: Colors.grey[300],
+            color: Theme.of(context).dividerColor,
             height: 1,
           ),
         ),
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(48.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
+            constraints: const BoxConstraints(maxWidth: 1200),
             child: Wrap(
-              spacing: 32,
-              runSpacing: 32,
+              spacing: 24,
+              runSpacing: 24,
               alignment: WrapAlignment.center,
               children: [
                 DashboardCard(
@@ -64,13 +68,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 DashboardCard(
                   title: 'Reorder List',
                   description: 'Check low stock and reorder',
-                  icon: Icons.shopping_cart,
+                  icon: Icons.shopping_cart_outlined,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.reorder),
                 ),
                 DashboardCard(
                   title: 'Thresholds',
                   description: 'Set thresholds for each item individually',
-                  icon: Icons.settings,
+                  icon: Icons.tune_outlined,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.thresholds),
                 ),
               ],
@@ -106,7 +110,10 @@ class _DashboardCardState extends State<DashboardCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cardWidth = Responsive.isTablet(context) ? 300.0 : 250.0;
+    final isLight = theme.brightness == Brightness.light;
+    
+    // Unified width for both Light and Dark modes to match "outer rectangles"
+    final double cardWidth = Responsive.isMobile(context) ? double.infinity : 300.0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -116,73 +123,50 @@ class _DashboardCardState extends State<DashboardCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: cardWidth,
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: theme.cardColor,
-              width: 3,
-            ),
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
+                      color: theme.primaryColor.withOpacity(0.1),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
                     ),
                   ]
                 : [],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedScale(
-                  scale: _isHovered ? 1.1 : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: theme.primaryColor,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 64,
+                color: isLight ? theme.primaryColor : Colors.white,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                widget.title,
+                style: TextStyle(
+                  fontSize: Responsive.textSize(context, base: 22),
+                  fontWeight: FontWeight.w700,
+                  color: isLight ? theme.primaryColor : Colors.white,
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  widget.title,
-                  style: TextStyle(
-                    fontSize: Responsive.textSize(context, base: 22),
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.description,
+                style: TextStyle(
+                  fontSize: Responsive.textSize(context, base: 14),
+                  color: isLight 
+                      ? theme.primaryColor.withOpacity(0.8) 
+                      : Colors.white.withOpacity(0.7),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.description,
-                  style: TextStyle(
-                    fontSize: Responsive.textSize(context, base: 16),
-                    color: Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

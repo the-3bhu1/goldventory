@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:goldventory/core/services/threshold_service.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 
@@ -25,10 +26,11 @@ class GlobalState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleTheme() {
+  void toggleTheme() async {
     isDarkMode = !isDarkMode;
     notifyListeners();
-    // TODO: persist theme
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', isDarkMode);
   }
 
   /// ThresholdService holds the nested thresholds and persistence logic.
@@ -184,6 +186,10 @@ class GlobalState extends ChangeNotifier {
   Future<void> loadThresholds() async {
     _isLoading = true;
     notifyListeners();
+
+    // Load theme preference
+    final prefs = await SharedPreferences.getInstance();
+    isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
     await thresholds.load();
     

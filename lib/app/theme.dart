@@ -3,18 +3,18 @@ import 'package:flutter/material.dart';
 class AppTheme {
   // Light theme
   static final ThemeData lightTheme = ThemeData(
-    primaryColor: const Color(0xFFB8E0D2),
+    primaryColor: const Color(0xFF003D33), // Darker Teal for Headers
     brightness: Brightness.light,
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFB8E0D2),
-      foregroundColor: Colors.black,
+      backgroundColor: Color(0xFFF0F9F8),
+      foregroundColor: Color(0xFF003D33),
     ),
-    scaffoldBackgroundColor: Colors.white,
-    cardColor: const Color(0xFF8ABEB7),
-    dividerColor: const Color(0xFF7AA89E),
-    highlightColor: const Color(0xFF7AA89E),
+    scaffoldBackgroundColor: const Color(0xFFF0F9F8),
+    cardColor: const Color(0xFFCEEDE4), // Light Teal for Cards
+    dividerColor: const Color(0xFFD1EBE8),
+    highlightColor: const Color(0xFFB3E0DB),
     dialogTheme: const DialogThemeData(
-      backgroundColor: highlightBackground,
+      backgroundColor: Color(0xFFF0F8F3),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -53,20 +53,70 @@ class AppTheme {
     ),
   );
 
-  static const Color highlightBackground = Color(0xFFF0F8F3);
+  static Color getHighlightBackground(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light
+        ? const Color(0xFFF0F9F8)
+        : const Color(0xFF1E2626);
+  }
 
-  // Dark theme (optional)
+  // Dark theme
   static final ThemeData darkTheme = ThemeData(
+    primaryColor: const Color(0xFF00A28E),
     brightness: Brightness.dark,
-    primarySwatch: Colors.indigo,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF111717),
+      foregroundColor: Colors.white,
+    ),
+    scaffoldBackgroundColor: const Color(0xFF111717),
+    cardColor: const Color(0xFF232D2D), // Deep Slate/Teal Card
+    dividerColor: const Color(0xFF2D3838),
+    highlightColor: const Color(0xFF2D3838),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: Color(0xFF1E2626),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF00A28E),
+        foregroundColor: Colors.white,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white,
+      ),
+    ),
+    inputDecorationTheme: const InputDecorationTheme(
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: Colors.white),
+      ),
+    ),
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: Colors.white,
+      selectionHandleColor: Colors.white,
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const Color(0xFF00A28E);
+        }
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStateProperty.all(Colors.white),
+    ),
+    expansionTileTheme: const ExpansionTileThemeData(
+      iconColor: Colors.white,
+      collapsedIconColor: Colors.white,
+      textColor: Colors.white,
+      collapsedTextColor: Colors.white,
+    ),
   );
 }
 
 class AppColors {
-  static const Color inventoryCardBackground = Color(0xFFC6E6DA);
-  static final Color shimmerBase = Colors.grey.shade300;
-  static final Color shimmerHighlight = Colors.grey.shade200;
-  static final Color surfaceVariant = Colors.grey.shade200;
-  static final Color borderGrey = Colors.grey.shade300;
-  static final Color textGrey = Colors.grey.shade600;
+  static Color inventoryCardBackground(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFCEEDE4) : const Color(0xFF232D2D);
+  static Color shimmerBase(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFD1EBE8) : const Color(0xFF1E2626);
+  static Color shimmerHighlight(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0F9F8) : const Color(0xFF2D3838);
+  static Color surfaceVariant(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0F9F8) : const Color(0xFF1E2626);
+  static Color borderGrey(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFD1EBE8) : const Color(0xFF2D3838);
+  static Color textGrey(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFF003D33).withOpacity(0.7) : Colors.grey.shade400;
 }
