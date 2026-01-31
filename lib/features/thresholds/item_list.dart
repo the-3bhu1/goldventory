@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:goldventory/features/settings/settings_view_model.dart';
+import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
 import '../../core/utils/helpers.dart';
 import '../../core/widgets/inventory_table.dart';
 import 'sub_item_list.dart';
@@ -10,7 +10,7 @@ import '../../app/theme.dart';
 enum _ItemMenuAction { rename, delete }
 
 /// Shows items for a selected category and allows creating / editing / deleting items
-/// Uses SettingsViewModel (local buffer) instead of writing directly to GlobalState.
+/// Uses ThresholdsViewModel (local buffer) instead of writing directly to GlobalState.
 class ItemList extends StatefulWidget {
   final String category;
   const ItemList({super.key, required this.category});
@@ -23,7 +23,7 @@ class _ItemListState extends State<ItemList> {
 
   Future<void> _showCreateItemDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final vm = Provider.of<SettingsViewModel>(context, listen: false);
+    final vm = Provider.of<ThresholdsViewModel>(context, listen: false);
 
     final result = await showDialog<String?>(
       context: context,
@@ -51,7 +51,7 @@ class _ItemListState extends State<ItemList> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = Provider.of<SettingsViewModel>(context);
+    final vm = Provider.of<ThresholdsViewModel>(context);
     final itemKeys = vm.itemsFor(widget.category);
 
     return Scaffold(
@@ -253,7 +253,7 @@ class _ItemListState extends State<ItemList> {
                                             value: vm,
                                             child: Builder(
                                               builder: (ctx) {
-                                                final watchVm = ctx.watch<SettingsViewModel>();
+                                                final watchVm = ctx.watch<ThresholdsViewModel>();
                                                 final mode =
                                                     watchVm.weightModeFor(widget.category, item);
                                                 final subItems =
@@ -264,14 +264,9 @@ class _ItemListState extends State<ItemList> {
                                                   final bySub = watchVm
                                                       .weightsForItemBySubItem(widget.category, item);
 
-                                                  List<String> shared = const [];
-                                                  for (final s in subItems) {
-                                                    final w = bySub[s];
-                                                    if (w != null && w.isNotEmpty) {
-                                                      shared = w;
-                                                      break;
-                                                    }
-                                                  }
+                                                  final shared = watchVm.sharedWeightsForItem(widget.category, item);
+                                                  final sortedShared = [...shared]
+                                                    ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
 
                                                   return InventoryTable(
                                                     title: '$item – Thresholds',
@@ -280,7 +275,7 @@ class _ItemListState extends State<ItemList> {
                                                     mode: InventoryTableMode.threshold,
                                                     subItems: subItems,
                                                     isSharedWeights: true,
-                                                    weightsForSubItem: (_) => shared,
+                                                    weightsForSubItem: (_) => sortedShared,
                                                     getValue: ({required subItem, required weight}) {
                                                       return watchVm.thresholdFor(
                                                         category: widget.category,

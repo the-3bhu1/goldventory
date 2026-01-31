@@ -6,7 +6,7 @@ import 'dart:async';
 /// NOTE:
 /// This ViewModel manages inventory quantities ONLY.
 /// Reorder logic is handled by InventorySnapshotService.
-/// Thresholds are managed by SettingsViewModel / ThresholdService.
+/// Thresholds are managed by ThresholdsViewModel / ThresholdService.
 /// InventoryViewModel
 /// ------------------
 /// - Reads and writes ONLY inventory quantities

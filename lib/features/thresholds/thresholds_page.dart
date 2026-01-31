@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:goldventory/global/global_state.dart';
-import 'package:goldventory/features/settings/settings_view_model.dart';
-import 'package:goldventory/features/settings/category_list.dart';
+import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
+import 'package:goldventory/features/thresholds/category_list.dart';
 import '../../core/widgets/shimmer_loading.dart';
 import 'item_list.dart';
 import '../../app/theme.dart';
 
-/// Settings landing page: provides a SettingsViewModel and shows categories.
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+/// Thresholds landing page: provides a ThresholdsViewModel and shows categories.
+class ThresholdsPage extends StatelessWidget {
+  const ThresholdsPage({super.key});
 
   Future<void> _showCreateCategoryDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final vm = Provider.of<SettingsViewModel>(context, listen: false);
+    final vm = Provider.of<ThresholdsViewModel>(context, listen: false);
 
     final result = await showDialog<String?>(
       context: context,
@@ -56,13 +56,13 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final gs = Provider.of<GlobalState>(context, listen: false);
 
-    return ChangeNotifierProvider<SettingsViewModel>(
+    return ChangeNotifierProvider<ThresholdsViewModel>(
       create: (_) {
-        final vm = SettingsViewModel(globalState: gs);
+        final vm = ThresholdsViewModel(globalState: gs);
         Future.microtask(() => vm.load());
         return vm;
       },
-      child: Consumer<SettingsViewModel>(builder: (context, vm, _) {
+      child: Consumer<ThresholdsViewModel>(builder: (context, vm, _) {
         final gs = context.watch<GlobalState>();
         return Scaffold(
           appBar: AppBar(title: const Text('Categories')),

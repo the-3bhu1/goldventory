@@ -4,7 +4,7 @@ import '../features/inventory/view/inventory_screen.dart';
 import '../features/inventory/view/reorder_screen.dart';
 import '../features/dashboard/view/dashboard_screen.dart';
 import '../features/inventory/view/orders_screen.dart';
-import '../features/settings/settings_page.dart';
+import '../features/thresholds/thresholds_page.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -12,7 +12,7 @@ class AppRoutes {
   static const inventory = '/inventory';
   static const reorder = '/reorder';
   static const orders = '/orders';
-  static const settings = '/settings';
+  static const thresholds = '/thresholds';
 
   static Route<dynamic> generateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
@@ -26,8 +26,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ReorderScreen());
       case orders:
         return MaterialPageRoute(builder: (_) => const OrdersScreen());
-      case settings:
-        return MaterialPageRoute(builder: (_) => const SettingsPage());
+      case thresholds:
+        return MaterialPageRoute(builder: (_) => const ThresholdsPage());
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

@@ -18,6 +18,9 @@ class InventoryScreen extends StatelessWidget {
 
 
 
+  // Firestore-safe encoding helper
+  String _encode(String s) => s.trim().replaceAll('.', '_').replaceAll('/', '_');
+
   Future<void> _setInventoryQuantity({
     required String category,
     required String item,
@@ -26,11 +29,16 @@ class InventoryScreen extends StatelessWidget {
     required int? value,
     required int Function()? getCurrentValue,
   }) async {
-    final ref = FirebaseFirestore.instance.collection('inventory').doc(category);
+    final safeCat = _encode(category);
+    final safeItem = _encode(item);
+    final safeSub = _encode(subItem);
+    final safeWeight = _encode(weight);
+
+    final ref = FirebaseFirestore.instance.collection('inventory').doc(safeCat);
 
     // If deleting
     if (value == null) {
-      await ref.update({'$item.$subItem.$weight': FieldValue.delete()});
+      await ref.update({'$safeItem.$safeSub.$safeWeight': FieldValue.delete()});
       return;
     }
 
@@ -43,11 +51,14 @@ class InventoryScreen extends StatelessWidget {
         // Prepare keys for ProductRepository
         // category is the productId
         // weightKey needs to be constructed carefully: subItem|weight (encoded)
-        String encode(String s) => s.trim().replaceAll('.', '_').replaceAll('/', '_');
         
-        final safeSub = subItem.isEmpty ? '__shared__' : encode(subItem);
-        final safeWeight = encode(weight);
-        final weightKey = '$safeSub|$safeWeight';
+        final safeSubKey = subItem.isEmpty ? '__shared__' : safeSub;
+        // NOTE: ProductRepository expects "encoded" parts joined by pipe
+        // The repo then decodes parts for auditing but uses them encoded for storage.
+        // Actually, let's verify Repo expectations. 
+        // Repo says: parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
+        // So we should pass ENCODED parts.
+        final weightKey = '$safeSubKey|$safeWeight';
 
         final repo = ProductRepository();
         
@@ -63,8 +74,8 @@ class InventoryScreen extends StatelessWidget {
     
     // Fallback: Normal set/update for decrease or no-change (or if logic skipped)
     await ref.set({
-      item: {
-        subItem: {weight: value}
+      safeItem: {
+        safeSub: {safeWeight: value}
       }
     }, SetOptions(merge: true));
   }
@@ -155,7 +166,7 @@ class InventoryScreen extends StatelessWidget {
                             title: Text(item),
                             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: () {
-                              Navigator.of(context).push(
+                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) {
                                     // REFACTOR: Use GlobalState as source of truth for SubItems too
@@ -192,7 +203,7 @@ class InventoryScreen extends StatelessWidget {
                                     ) == true;
 
                                     return StreamBuilder<DocumentSnapshot>(
-                                      stream: FirebaseFirestore.instance.collection('inventory').doc(category).snapshots(),
+                                      stream: FirebaseFirestore.instance.collection('inventory').doc(_encode(category)).snapshots(),
                                       builder: (context, snapshot) {
                                         if (!snapshot.hasData) {
                                           return const Scaffold(
@@ -201,7 +212,8 @@ class InventoryScreen extends StatelessWidget {
                                         }
 
                                         final freshData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-                                        final freshItemMap = (freshData[item] as Map<String, dynamic>?) ?? {};
+                                        // Lookup using Encoded Item Key
+                                        final freshItemMap = (freshData[_encode(item)] as Map<String, dynamic>?) ?? {};
 
                                         return InventoryTable(
                                           title: '$item Inventory',
@@ -218,18 +230,21 @@ class InventoryScreen extends StatelessWidget {
                                             );
                                           },
                                           getValue: ({required subItem, required weight}) {
-                                            final m = freshItemMap[subItem];
-                                            if (m is Map && m[weight] is num) {
-                                              return (m[weight] as num).toInt();
+                                            // Lookup using Encoded SubItem and Weight Keys
+                                            final m = freshItemMap[_encode(subItem)];
+                                            final safeW = _encode(weight);
+                                            if (m is Map && m[safeW] is num) {
+                                              return (m[safeW] as num).toInt();
                                             }
                                             return null;
                                           },
                                           setValue: ({required subItem, required weight, required value}) async {
                                             // Capture current value before update
                                             int currentVal = 0;
-                                            final m = freshItemMap[subItem];
-                                            if (m is Map && m[weight] is num) {
-                                              currentVal = (m[weight] as num).toInt();
+                                            final m = freshItemMap[_encode(subItem)];
+                                            final safeW = _encode(weight);
+                                            if (m is Map && m[safeW] is num) {
+                                              currentVal = (m[safeW] as num).toInt();
                                             }
 
                                             await _setInventoryQuantity(

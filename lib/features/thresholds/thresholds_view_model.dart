@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:goldventory/global/global_state.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:goldventory/data/repositories/product_repository.dart';
+import 'package:goldventory/core/utils/helpers.dart';
 
 enum WeightMode { shared, perSubItem }
 
@@ -15,12 +16,12 @@ String _encodeKey(String raw) {
   return k.replaceAll('.', '_').replaceAll('/', '_');
 }
 
-/// SettingsViewModel (Option B extended for subItem support)
+/// ThresholdsViewModel (Option B extended for subItem support)
 ///
 /// Local editable copy now supports nested shape:
 ///   category -> item -> subItem -> weight -> threshold
 /// and exposes convenience methods for subItem and item-level shared weights.
-class SettingsViewModel extends ChangeNotifier {
+class ThresholdsViewModel extends ChangeNotifier {
   final GlobalState globalState;
 
   /// Local editable copy: category -> item -> subItem -> weight -> threshold
@@ -47,7 +48,7 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  SettingsViewModel({required this.globalState}) {
+  ThresholdsViewModel({required this.globalState}) {
     globalState.addListener(_onGlobalStateChanged);
   }
 
@@ -72,25 +73,25 @@ class SettingsViewModel extends ChangeNotifier {
   // -----------------
   /// Load a deep copy of thresholds from global state into local buffer.
   Future<void> load() async {
-    developer.log('SettingsViewModel.load() STARTED', name: 'SettingsVM');
+    developer.log('ThresholdsViewModel.load() STARTED', name: 'ThresholdsVM');
     
     // 1. If _local is already populated, DO NOT RELOAD.
-    //    This assumes SettingsViewModel is long-lived or we want to preserve edits.
+    //    This assumes ThresholdsViewModel is long-lived or we want to preserve edits.
     //    Since we want to fix "Temporary Blankness", we trust the existing _local state.
     if (_local.isNotEmpty) {
-      developer.log('SettingsViewModel.load() SKIPPED: _local already populated with ${_local.length} categories.', name: 'SettingsVM');
+      developer.log('ThresholdsViewModel.load() SKIPPED: _local already populated with ${_local.length} categories.', name: 'ThresholdsVM');
       return;
     }
 
     // 2. Always hydrate from in-memory GlobalState first (Fast, Synchronous, Fresh)
     if (globalState.thresholds.asNestedMap().isNotEmpty) {
       _hydrateFromGlobal();
-      developer.log('SettingsViewModel.load() hydrated from existing GlobalState', name: 'SettingsVM');
+      developer.log('ThresholdsViewModel.load() hydrated from existing GlobalState', name: 'ThresholdsVM');
     }
 
     // 3. Only fetch from Firestore if GlobalState is empty and not already loading.
     if (globalState.thresholds.asNestedMap().isEmpty && !globalState.isLoading) {
-       developer.log('SettingsViewModel.load() fetching from Firestore...', name: 'SettingsVM');
+       developer.log('ThresholdsViewModel.load() fetching from Firestore...', name: 'ThresholdsVM');
        Future.microtask(() {
          globalState.setLoading(true);
        });
@@ -111,7 +112,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   void _hydrateFromGlobal() {
       _local.clear();
-      developer.log('SettingsViewModel.load() CLEARED _local', name: 'SettingsVM');
+      developer.log('ThresholdsViewModel.load() CLEARED _local', name: 'ThresholdsVM');
       final source = globalState.thresholds.asNestedMap();
 
       source.forEach((cat, items) {
@@ -129,7 +130,7 @@ class SettingsViewModel extends ChangeNotifier {
         });
         _local[cat] = itemCopy;
       });
-      developer.log('SettingsViewModel.load() POPULATED _local with ${_local.length} categories', name: 'SettingsVM');
+      developer.log('ThresholdsViewModel.load() POPULATED _local with ${_local.length} categories', name: 'ThresholdsVM');
 
       // Restore persisted weight modes from GlobalState
       _weightModes.clear();
@@ -177,8 +178,8 @@ class SettingsViewModel extends ChangeNotifier {
     if (itemMap == null) return [];
 
     // Preserve insertion order exactly as stored
-    // Filter out metadata fields (e.g. __metadata, __item_order etc)
-    return itemMap.keys.where((k) => !k.startsWith('__')).toList();
+    // Filter out metadata fields (e.g. __metadata, __item_order etc) and the special 'shared' key
+    return itemMap.keys.where((k) => k != 'shared' && !k.startsWith('__')).toList();
   }
 
   /// Explicit settings-only accessor used by weight & threshold flows.
@@ -201,29 +202,39 @@ class SettingsViewModel extends ChangeNotifier {
   List<String> weightsForSubItem(String category, String item, String subItem) {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return [];
-    final weights = itemMap[subItem];
-    if (weights == null) return [];
 
-    // 0. If Shared Mode, perform Smart Inheritance check
     final mode = weightModeFor(category, item);
     final isShared = mode == WeightMode.shared;
 
-    // 1. Get explicit weights (if any)
+    // 1. If Shared Mode, ALWAYS try the 'shared' master list first
+    if (isShared) {
+      final sharedMap = itemMap['shared'];
+      if (sharedMap != null && sharedMap.isNotEmpty) {
+        return sharedMap.keys
+            .map((e) => e.toString())
+            .toList()
+          ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+      }
+    }
+
+    // 2. Otherwise get explicit weights for this sub-item
+    final weights = itemMap[subItem];
+    if (weights == null) return [];
     final explicitList = weights.keys.cast<String>().toList();
 
-    // 2. If Shared Mode AND explicit list is empty (or we just want to be robust), lookup schema from siblings
+    // 3. Last Fallback: If Shared Mode and we still have nothing, search siblings
     if (isShared && explicitList.isEmpty) {
-      // Find a "donor" subitem that has weights
       for (final otherSub in itemMap.keys) {
-        if (otherSub.startsWith('__')) continue; // skip metadata
+        if (otherSub.startsWith('__') || otherSub == 'shared') continue; 
         final otherWeights = itemMap[otherSub];
         if (otherWeights != null && otherWeights.isNotEmpty) {
-           return otherWeights.keys.cast<String>().toList();
+           return otherWeights.keys.cast<String>().toList()
+            ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
         }
       }
     }
 
-    return explicitList;
+    return explicitList..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
   }
 
   int? thresholdFor({
@@ -247,7 +258,7 @@ class SettingsViewModel extends ChangeNotifier {
     );
 
     if (globalVal != null) {
-      developer.log('SettingsViewModel.thresholdFor REPAIRED local miss for $subItem/$weight -> $globalVal', name: 'SettingsVM');
+      developer.log('ThresholdsViewModel.thresholdFor REPAIRED local miss for $subItem/$weight -> $globalVal', name: 'ThresholdsVM');
       // Repair local silently
       _ensureCategoryItemSub(category, item, subItem);
       _local[category]![item]![subItem]![weight] = globalVal;
@@ -361,7 +372,7 @@ class SettingsViewModel extends ChangeNotifier {
   /// Remove a category locally and cascade delete from backend
   Future<void> removeCategory(String category) async {
     // Cascade delete from backend (Inventory, Thresholds, Orders)
-    // We instantiate repo here since SettingsViewModel doesn't hold it permanently
+    // We instantiate repo here since ThresholdsViewModel doesn't hold it permanently
     // (though strict DI would be better, this is pragmatic for this VM)
     // NOTE: This is destructive and irreversible.
     await ProductRepository().deleteCategoryCascade(category);
@@ -757,8 +768,15 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   List<String> sharedWeightsForItem(String category, String item) {
-    // No longer supported
-    return const [];
+    final itemMap = _local[category]?[item];
+    if (itemMap == null) return [];
+    
+    final shared = itemMap['shared'];
+    if (shared == null) return [];
+
+    return shared.keys
+        .map((e) => e.toString())
+        .toList();
   }
 
   Map<String, List<String>> weightsForItemBySubItem(String category, String item) {
@@ -835,6 +853,7 @@ class SettingsViewModel extends ChangeNotifier {
 
           // Ensure each weight key exists structurally
           for (final w in weights.keys) {
+            final val = weights[w];
             globalState.thresholds.ensureThresholdPath(
               category: cat,
               item: item,
@@ -842,7 +861,6 @@ class SettingsViewModel extends ChangeNotifier {
               weight: w,
             );
 
-            final val = weights[w];
             if (val != null) {
               // Direct write to service to avoid 100s of notifyListeners()
               globalState.thresholds.setThreshold(

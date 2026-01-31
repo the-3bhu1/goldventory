@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:goldventory/features/settings/settings_view_model.dart';
+import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
 
 import '../../core/utils/helpers.dart';
 
@@ -15,7 +15,7 @@ class SubItemList extends StatelessWidget {
   });
 
   Future<void> _showCreateSubItemDialog(
-      BuildContext context, SettingsViewModel vm) async {
+      BuildContext context, ThresholdsViewModel vm) async {
     final ctrl = TextEditingController();
 
     final result = await showDialog<String?>(
@@ -50,7 +50,7 @@ class SubItemList extends StatelessWidget {
 
   Future<void> _renameSubItem(
     BuildContext context,
-    SettingsViewModel vm,
+    ThresholdsViewModel vm,
     String oldName,
   ) async {
     final ctrl = TextEditingController(text: oldName);
@@ -88,7 +88,7 @@ class SubItemList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vm = Provider.of<SettingsViewModel>(context);
+    final vm = Provider.of<ThresholdsViewModel>(context);
     final subs = vm.subItemsFor(category, item);
 
     return Scaffold(
@@ -100,8 +100,18 @@ class SubItemList extends StatelessWidget {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (ctx, idx) {
           final s = subs[idx];
+          final assetPath = Helpers.getSubItemImage(category, s);
 
           return ListTile(
+            leading: assetPath != null
+                ? Image.asset(
+                    assetPath,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                  )
+                : null,
             title: Text(s),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import 'package:goldventory/features/settings/settings_view_model.dart';
+import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
 import 'item_list.dart';
 
 /// A reusable CategoryList widget that displays categories and provides
-/// quick actions: open, rename, delete. It relies on SettingsViewModel.
+/// quick actions: open, rename, delete. It relies on ThresholdsViewModel.
 class CategoryList extends StatelessWidget {
   const CategoryList({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final vm = Provider.of<SettingsViewModel>(context);
+    final vm = Provider.of<ThresholdsViewModel>(context);
     final categories = vm.categories;
 
     return ListView.separated(

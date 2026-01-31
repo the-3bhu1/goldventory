@@ -46,7 +46,40 @@ class Helpers {
   static List<String> extractSubItems(Map<String, dynamic> itemMap) {
     return itemMap.keys
         .where((k) => k != 'shared' && !k.startsWith('__'))
-        .toList()
-      ..sort();
+        .toList();
+  }
+
+  static String? getSubItemImage(String category, String subItem) {
+    final clean = subItem.trim().toUpperCase();
+
+    // 1. Teeka Chains (Image 1, Image 2, etc)
+    if (clean.startsWith('IMAGE ')) {
+      final num = clean.replaceAll('IMAGE ', '');
+      return 'assets/images/teeka/image_$num.png';
+    }
+
+    // 2. Jhumkis
+    if (category.toUpperCase() == 'JHUMKIS') {
+      final map = {
+        'LOOSE BALL': 'loose_ball.png',
+        'LB 2 STEP': 'loose_ball.png',
+        'LB 3 STEP': 'loose_ball.png',
+        'ATTACH BALL': 'attach_ball.png',
+        'AB 2 STEP': 'attach_ball.png',
+        'AB 3 STEP': 'attach_ball.png',
+        '3 LINE': '3_line.png',
+        '3 LINE BELL': '3_line_bell.png',
+        'NAKAS': 'nakas.png',
+        'NAKAS WITH BELL': 'nakas_with_bell.png',
+        'GRAPE': 'grape.png',
+        'PANJRA': 'panjra.png',
+        'SPIRAL': 'spiral.png',
+        'SPIRAL 2 STEP': 'spiral.png',
+      };
+      final file = map[clean];
+      if (file != null) return 'assets/images/jhumkis/$file';
+    }
+
+    return null;
   }
 }

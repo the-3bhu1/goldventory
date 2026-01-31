@@ -4,6 +4,7 @@ import 'package:goldventory/app/theme.dart';
 import 'package:goldventory/core/widgets/editable_cell.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
 import 'package:goldventory/global/global_state.dart';
+import 'package:goldventory/core/utils/helpers.dart';
 
 enum InventoryTableMode {
   inventory,
@@ -62,11 +63,11 @@ class _InventoryTableState extends State<InventoryTable> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final availableHeight = screenHeight - kToolbarHeight - MediaQuery.of(context).padding.top - 100;
-    final rowHeight = (availableHeight / (filteredSubItems.length + 1)).clamp(48.0, 120.0);
+    final rowHeight = (availableHeight / (filteredSubItems.length + 1)).clamp(68.0, 120.0);
     final fontSize = Responsive.textSize(context, base: 16);
 
-    final typeColWidthRaw = (screenWidth / 4) * 1.2;
-    final typeColWidth = (typeColWidthRaw.clamp(70.0, screenWidth));
+    final typeColWidthRaw = (screenWidth / 3.3); 
+    final typeColWidth = (typeColWidthRaw.clamp(100.0, screenWidth));
 
     final bool isThreshold = widget.mode == InventoryTableMode.threshold;
 
@@ -268,14 +269,64 @@ class _InventoryTableState extends State<InventoryTable> {
                             ),
                           ),
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            subItem == 'shared' ? 'Shared' : subItem,
-                            style: TextStyle(
-                              fontSize: fontSize,
-                              fontWeight: FontWeight.w600,
-                              
-                            ),
-                          ),
+                          child: (() {
+                            final label = subItem == 'shared' ? 'Shared' : subItem;
+                            final assetPath = Helpers.getSubItemImage(widget.category, label);
+                            final bool isJhumkis = widget.category.toUpperCase() == 'JHUMKIS';
+                            
+                            if (assetPath != null) {
+                              if (isJhumkis) {
+                                // For Jhumkis, show BOTH image and text in a Column
+                                return Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Image.asset(
+                                          assetPath,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, size: 16),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        label,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: fontSize * 0.75, // Slightly smaller text
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                // For Teeka etc, just show the Image if found
+                                return Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Image.asset(
+                                    assetPath,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) => Text(
+                                      label,
+                                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                            
+                            return Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          })(),
                         ),
                         ...weights.map((weight) {
                           final value = widget.getValue(subItem: subItem, weight: weight);

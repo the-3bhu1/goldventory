@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:goldventory/features/settings/settings_view_model.dart';
+import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
 import '../../app/theme.dart';
 import '../../core/utils/helpers.dart';
 
@@ -70,7 +70,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       return;
     }
     // vm is defined in build, so we get it from context here
-    final vm = context.read<SettingsViewModel>();
+    final vm = context.read<ThresholdsViewModel>();
     // Persist weight mode (shared / per-subitem)
     vm.setWeightMode(widget.category, widget.item, _mode!);
 
@@ -138,7 +138,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<SettingsViewModel>();
+    final vm = context.watch<ThresholdsViewModel>();
 
     _mode ??= vm.weightModeFor(widget.category, widget.item);
 
@@ -147,14 +147,19 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
 
     // SHARED MODE — hydrate once
     if (_mode == WeightMode.shared && _sharedWeights.isEmpty) {
-      List<String> resolved = const [];
-      for (final s in subs) {
-        final w = bySub[s];
-        if (w != null && w.isNotEmpty) {
-          resolved = w;
-          break;
+      List<String> resolved = vm.sharedWeightsForItem(widget.category, widget.item);
+      
+      // Fallback to searching sub-items if explicitly shared key is empty
+      if (resolved.isEmpty) {
+        for (final s in subs) {
+          final w = bySub[s];
+          if (w != null && w.isNotEmpty) {
+            resolved = w;
+            break;
+          }
         }
       }
+      
       _sharedWeights = [...resolved]
         ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
     }
@@ -215,7 +220,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                   backgroundColor: Colors.white,
                   onSelected: _mode == null
                       ? (_) {
-                          final vm = context.read<SettingsViewModel>();
+                          final vm = context.read<ThresholdsViewModel>();
                           vm.setWeightMode(widget.category, widget.item, WeightMode.shared);
                           setState(() {
                             _mode = WeightMode.shared;
@@ -231,7 +236,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                   backgroundColor: Colors.white,
                   onSelected: _mode == null
                       ? (_) {
-                          final vm = context.read<SettingsViewModel>();
+                          final vm = context.read<ThresholdsViewModel>();
                           vm.setWeightMode(widget.category, widget.item, WeightMode.perSubItem);
                           setState(() {
                             _mode = WeightMode.perSubItem;
@@ -290,8 +295,24 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                     final ctrl = _perSubCtrls[subItem]!;
                     final weights = _perSubItemWeights[subItem] ?? [];
 
+                    final assetPath = Helpers.getSubItemImage(widget.category, subItem);
+
                     return ExpansionTile(
-                      title: Text(subItem),
+                      title: assetPath != null
+                          ? Row(
+                              children: [
+                                Image.asset(
+                                  assetPath,
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.image),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(subItem),
+                              ],
+                            )
+                          : Text(subItem),
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

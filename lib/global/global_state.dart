@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:goldventory/core/services/threshold_service.dart';
+import 'package:goldventory/core/utils/helpers.dart';
 
 /// Global scaffold messenger for app-wide snackbars
 class GlobalScaffold {
@@ -94,7 +95,7 @@ class GlobalState extends ChangeNotifier {
   }
 
   /// Set threshold at explicit path and notify listeners
-  void setThresholdFor({required String category, required String item, String? subItem, required String weight, required int threshold}) {
+  void setThresholdFor({required String category, required String item, String? subItem, required String weight, int? threshold}) {
     thresholds.setThreshold(category: category, item: item, subItem: subItem, weight: weight, threshold: threshold);
     notifyListeners();
   }
@@ -140,35 +141,40 @@ class GlobalState extends ChangeNotifier {
     final itemMap = catMap[item];
     if (itemMap == null) return [];
     
+    final isShared = getWeightModeFor(category: category, item: item) == true;
+
+    // 1. If Shared Mode, ALWAYS try the 'shared' master list first
+    if (isShared) {
+      final sharedMap = itemMap['shared'];
+      if (sharedMap != null && sharedMap.isNotEmpty) {
+        return sharedMap.keys
+            .where((w) => w.isNotEmpty && !w.startsWith('__'))
+            .toList()
+          ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+      }
+    }
+
+    // 2. Otherwise (or if 'shared' was empty), get explicit weights for this sub-item
     final subMap = itemMap[subItem];
-    
-    // 1. Get explicit weights (if any)
-    final explicitKeys = subMap?.keys
+    final weights = subMap?.keys
         .where((w) => w.isNotEmpty && !w.startsWith('__'))
         .toList() ?? [];
-        
-    // 2. If explicit weights found, return them
-    if (explicitKeys.isNotEmpty) return explicitKeys;
 
-    // 3. Fallback: If Shared Mode, look for schema from siblings
-    final isShared = getWeightModeFor(category: category, item: item) == true;
-    if (isShared) {
-      // Find a "donor" subitem that has weights
+    // 3. Last Fallback: If Shared Mode and we still have nothing, search siblings
+    if (weights.isEmpty && isShared) {
       for (final otherSub in itemMap.keys) {
-        if (otherSub.startsWith('__')) continue; 
-        final otherWeights = itemMap[otherSub];
-        
-        final donorKeys = otherWeights?.keys
+        if (otherSub.startsWith('__') || otherSub == 'shared') continue; 
+        final otherWeights = itemMap[otherSub]?.keys
             .where((w) => w.isNotEmpty && !w.startsWith('__'))
             .toList();
-            
-        if (donorKeys != null && donorKeys.isNotEmpty) {
-           return donorKeys;
+        if (otherWeights != null && otherWeights.isNotEmpty) {
+          return otherWeights
+            ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
         }
       }
     }
-    
-    return [];
+
+    return weights..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
   }
 
   // ------------------------------

@@ -45,6 +45,12 @@ class AppTheme {
       }),
       checkColor: WidgetStateProperty.all(Colors.black),
     ),
+    expansionTileTheme: const ExpansionTileThemeData(
+      iconColor: Colors.black,
+      collapsedIconColor: Colors.black,
+      textColor: Colors.black,
+      collapsedTextColor: Colors.black,
+    ),
   );
 
   static const Color highlightBackground = Color(0xFFF0F8F3);

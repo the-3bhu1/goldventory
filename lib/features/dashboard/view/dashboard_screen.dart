@@ -71,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Thresholds',
                   description: 'Set thresholds for each item individually',
                   icon: Icons.settings,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.thresholds),
                 ),
               ],
             ),

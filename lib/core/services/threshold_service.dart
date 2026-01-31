@@ -90,7 +90,7 @@ class ThresholdService {
   /// Notes:
   /// - `subItem == ''` represents item‑level thresholds
   /// - This updates in‑memory state ONLY
-  void setThreshold({required String category, required String item, String? subItem, required String weight, required int threshold}) {
+  void setThreshold({required String category, required String item, String? subItem, required String weight, int? threshold}) {
     final s = (subItem ?? '').trim();
     _ensureCategoryItemSub(category, item, s);
     _thresholds[category]![item]![s]![weight] = threshold;
@@ -171,7 +171,9 @@ class ThresholdService {
           final wm = itMap[sub]!;
           return wm[w];
         }
-      } catch (_) {}
+      } catch (e) {
+         developer.log('ThresholdService.tryLookup failed: $cat|$it|$sub|$w -> $e', name: 'ThresholdService');
+      }
       return null;
     }
 
@@ -270,9 +272,12 @@ class ThresholdService {
         ...docsMap.keys, // Append any new/unknown categories at the end
       };
 
-      for (final catKey in orderedCategories) {
-        final data = docsMap[catKey];
-        if (data == null) continue; // Should not happen for keys from docsMap
+      String decode(String s) => s.startsWith('__') ? s : s.replaceAll('_', '.');
+
+      for (final catKeyRaw in orderedCategories) {
+        final catKey = decode(catKeyRaw);
+        final data = docsMap[catKeyRaw]; // Lookup using raw ID
+        if (data == null) continue;
 
         // Extract Item Order
         List<String> itemOrder = [];
@@ -290,8 +295,11 @@ class ThresholdService {
         };
 
         for (final itemKeyRaw in orderedItems) {
-          final itemKey = itemKeyRaw.toString();
-          final itemValue = itemsMap[itemKey];
+          // Skip internal keys at item level if any
+          if (itemKeyRaw.toString().startsWith('__')) continue;
+
+          final itemKey = decode(itemKeyRaw.toString());
+          final itemValue = itemsMap[itemKeyRaw]; // Lookup using raw ID
           if (itemValue is! Map) continue;
 
           // Extract SubItem Order
@@ -309,16 +317,61 @@ class ThresholdService {
           };
 
           for (final subKeyRaw in orderedSubItems) {
-            final subKey = subKeyRaw.toString();
-            final subVal = subItemsMap[subKey];
+            // Skip internal keys at sub-item level if any, EXCEPT __metadata (used for WeightMode)
+            if (subKeyRaw.toString().startsWith('__') && subKeyRaw != '__metadata') continue;
+            
+            final subKey = decode(subKeyRaw.toString());
+            final subVal = subItemsMap[subKeyRaw]; // Lookup using raw subKey
 
             if (subVal is! Map) continue;
             
             _ensureCategoryItemSub(catKey, itemKey, subKey);
 
-            subVal.forEach((wKey, wVal) {
-              _thresholds[catKey]![itemKey]![subKey]![wKey.toString()] = wVal;
-            });
+            // Extract Weight Order
+            List<String> weightOrder = [];
+            if (subVal['__weight_order'] is List) {
+               weightOrder = List<String>.from(subVal['__weight_order']);
+            }
+            
+            final weightsMap = Map<String, dynamic>.from(subVal);
+            weightsMap.remove('__weight_order');
+
+            final orderedWeights = <String>{
+              ...weightOrder,
+              ...weightsMap.keys,
+            };
+
+            for (final wKeyRaw in orderedWeights) {
+              if (wKeyRaw.toString().startsWith('__')) continue;
+
+              // Don't decode content inside metadata
+              final wKey = (subKey == '__metadata') 
+                  ? wKeyRaw.toString() 
+                  : decode(wKeyRaw.toString());
+              
+              final val = weightsMap[wKeyRaw];
+
+              // Hardening: Block corrupted data (Maps/Lists) but try to recover wrapped values
+              if (subKey != '__metadata' && (val is Map || val is List)) {
+                 // RECOVERY: Check if it's a wrapped value from the bug
+                 if (val is Map && val.containsKey('_value')) {
+                    _thresholds[catKey]![itemKey]![subKey]![wKey] = val['_value'];
+                    continue; 
+                 }
+
+                 // RECOVERY: If it's an empty map (common corruption pattern), treat as valid null (unset threshold)
+                 // This restores the "button" even if the threshold number is lost.
+                 if (val is Map && val.isEmpty) {
+                    _thresholds[catKey]![itemKey]![subKey]![wKey] = null;
+                    continue; 
+                 }
+
+                 developer.log('ThresholdService: Ignoring corrupted weight value for $wKey: $val', name: 'ThresholdService');
+                 continue;
+              }
+                  
+              _thresholds[catKey]![itemKey]![subKey]![wKey] = val;
+            }
           }
         }
       }
@@ -379,8 +432,15 @@ class ThresholdService {
           subPayload['__sub_item_order'] = subItemOrder;
 
           subMap.forEach((subItem, weightMap) {
-            if (subItem == 'shared') return;
             final Map<String, dynamic> weightPayload = {};
+            
+            // Weight Order
+            final List<String> weightOrder = weightMap.keys
+                .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
+                .map(_safeKey)
+                .toList();
+            weightPayload['__weight_order'] = weightOrder;
+
             weightMap.forEach((w, val) {
               final outKey = _safeKey(w == '' ? '' : w.toString());
               weightPayload[outKey] = val;
@@ -394,36 +454,12 @@ class ThresholdService {
         payload[_safeKey(cat)] = itemPayload;
       });
 
-      // Sanitize payload into a Firestore-friendly map
-      Map<String, dynamic> sanitized = {};
-
-      // helper to unwrap the wrapper structure produced by _sanitizeToMap
-      dynamic unwrap(dynamic node) {
-        if (node is Map<String, dynamic>) {
-          if (node.containsKey('_value')) return node['_value'];
-          if (node.containsKey('_list')) {
-            return (node['_list'] as List).map((e) => unwrap(e)).toList();
-          }
-          final out = <String, dynamic>{};
-          node.forEach((kk, vv) {
-            out[kk] = unwrap(vv);
-          });
-          return out;
-        }
-        return node;
-      }
-
-      payload.forEach((k, v) {
-        final s = _sanitizeToMap(v);
-        sanitized[k.toString()] = unwrap(s);
-      });
-
-      // Debug: log the sanitized payload as JSON so we can inspect exactly what is sent to Firestore
+      // DIRECT SAVE: Removed faulty sanitization/wrapping logic that was corrupting data
+      final sanitized = payload;
+      
       try {
-        developer.log('ThresholdService.save(): sanitized payload = ${convert.jsonEncode(sanitized)}', name: 'ThresholdService');
-      } catch (_) {
-        developer.log('ThresholdService.save(): sanitized payload could not be JSON-encoded', name: 'ThresholdService');
-      }
+         developer.log('ThresholdService.save(): payload size = ${sanitized.length} categories', name: 'ThresholdService');
+      } catch (_) {}
 
       // Write one document per category (exact mirror of inventory)
       final col = FirebaseFirestore.instance.collection('thresholds');

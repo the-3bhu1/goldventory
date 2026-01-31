@@ -214,7 +214,7 @@ class ProductRepository {
         final Map<String, DocumentSnapshot> productSnaps = {};
         for (final pid in productRefs.keys) {
           final snap = await tx.get(productRefs[pid]!);
-          if (!snap.exists) throw Exception('Product $pid not found');
+          // Don't throw if not exists, we will create it
           productSnaps[pid] = snap;
         }
 
@@ -250,7 +250,9 @@ class ProductRepository {
           // `item` here is the Order Item map, which contains 'item' (the Item Name)
           // `prodData` is the Category document data
           final prodSnap = productSnaps[prodId]!;
-          final prodData = Map<String, dynamic>.from(prodSnap.data() as Map<String, dynamic>);
+          final prodData = prodSnap.exists 
+              ? Map<String, dynamic>.from(prodSnap.data() as Map<String, dynamic>)
+              : <String, dynamic>{};
           
           final itemName = item['item'] as String;
           final safeItemName = _encodeKey(itemName);
@@ -273,7 +275,13 @@ class ProductRepository {
           final newQty = prevQty + acceptedReceive;
 
           final productRef = _db.doc(prodId);
-          tx.update(productRef, {'$safeItemName.$type.$nestedKey': newQty});
+          tx.set(productRef, {
+            '$safeItemName': {
+              '$type': {
+                '$nestedKey': newQty
+              }
+            }
+          }, SetOptions(merge: true));
 
           // audit event
           final auditRef = productRef.collection('events').doc();
@@ -357,8 +365,10 @@ class ProductRepository {
       final productRef = _db.doc(_encodeKey(productId));
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snap = await tx.get(productRef);
-        if (!snap.exists) throw Exception('Product $productId not found');
-        final prodData = Map<String, dynamic>.from(snap.data() as Map<String, dynamic>);
+        // Treat missing doc as empty (it will be created by set-merge)
+        final prodData = snap.exists 
+            ? Map<String, dynamic>.from(snap.data() as Map<String, dynamic>) 
+            : <String, dynamic>{};
         
         final safeItemName = _encodeKey(itemName);
 
@@ -378,7 +388,13 @@ class ProductRepository {
         final prevQty = (typeMap[nestedKey] ?? 0) as int;
         final newQty = prevQty + remaining;
 
-        tx.update(productRef, {'$safeItemName.$type.$nestedKey': newQty});
+        tx.set(productRef, {
+          '$safeItemName': {
+            '$type': {
+              '$nestedKey': newQty
+            }
+          }
+        }, SetOptions(merge: true));
 
         // audit event
         final auditRef = productRef.collection('events').doc();
