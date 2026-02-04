@@ -8,11 +8,8 @@ class Helpers {
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.black),
-        ),
-        backgroundColor: backgroundColor ?? const Color(0xFFB8E0D2),
+        content: Text(message),
+        backgroundColor: backgroundColor,
         duration: const Duration(seconds: 1),
       ),
     );

@@ -39,7 +39,8 @@ class CategoryList extends StatelessWidget {
                       title: const Text('Rename category'),
                       content: TextField(
                         controller: ctrl,
-                        decoration: const InputDecoration(hintText: 'Category name'),
+                        decoration:
+                            const InputDecoration(hintText: 'Category name'),
                         autofocus: true,
                       ),
                       actions: [
@@ -48,7 +49,16 @@ class CategoryList extends StatelessWidget {
                           child: const Text('Cancel'),
                         ),
                         ElevatedButton(
-                          onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+                          onPressed: () =>
+                              Navigator.of(ctx).pop(ctrl.text.trim()),
+                          style: Theme.of(context).brightness ==
+                                  Brightness.light
+                              ? ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).cardColor,
+                                  foregroundColor:
+                                      Theme.of(context).primaryColor,
+                                )
+                              : null,
                           child: const Text('Rename'),
                         ),
                       ],
@@ -69,10 +79,24 @@ class CategoryList extends StatelessWidget {
                     context: context,
                     builder: (dctx) => AlertDialog(
                       title: Text('Delete "$cat"?'),
-                      content: const Text('This will remove the category and all its items from local changes. This cannot be undone.'),
+                      content: const Text(
+                          'This will remove the category and all its items from local changes. This cannot be undone.'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('Cancel')),
-                        ElevatedButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Delete')),
+                        TextButton(
+                            onPressed: () => Navigator.of(dctx).pop(false),
+                            child: const Text('Cancel')),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(dctx).pop(true),
+                          style: Theme.of(context).brightness ==
+                                  Brightness.light
+                              ? ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).cardColor,
+                                  foregroundColor:
+                                      Theme.of(context).primaryColor,
+                                )
+                              : null,
+                          child: const Text('Delete'),
+                        ),
                       ],
                     ),
                   );
@@ -82,20 +106,21 @@ class CategoryList extends StatelessWidget {
                       showDialog(
                         context: context,
                         barrierDismissible: false,
-                        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+                        builder: (ctx) =>
+                            const Center(child: CircularProgressIndicator()),
                       );
                     }
-                    
+
                     try {
                       await vm.removeCategory(cat);
                       if (context.mounted) {
-                         // Pop loading dialog
-                        Navigator.of(context).pop(); 
+                        // Pop loading dialog
+                        Navigator.of(context).pop();
                         Helpers.showSnackBar('Category removed');
                       }
                     } catch (e) {
                       if (context.mounted) {
-                         // Pop loading dialog on error
+                        // Pop loading dialog on error
                         Navigator.of(context).pop();
                         Helpers.showSnackBar('Error removing category: $e');
                       }
@@ -108,7 +133,8 @@ class CategoryList extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider.value(value: vm, child: ItemList(category: cat)),
+                      builder: (_) => ChangeNotifierProvider.value(
+                          value: vm, child: ItemList(category: cat)),
                     ),
                   );
                 },
@@ -117,7 +143,8 @@ class CategoryList extends StatelessWidget {
           ),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider.value(value: vm, child: ItemList(category: cat)),
+              builder: (_) => ChangeNotifierProvider.value(
+                  value: vm, child: ItemList(category: cat)),
             ),
           ),
         );

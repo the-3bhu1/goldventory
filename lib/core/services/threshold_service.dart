@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'dart:convert' as convert;
 
 /// ThresholdService
 ///
@@ -31,12 +30,14 @@ class ThresholdService {
   ThresholdService();
 
   /// category -> item -> subItem -> weightKey -> value
-  final Map<String, Map<String, Map<String, Map<String, dynamic>>>> _thresholds = {};
+  final Map<String, Map<String, Map<String, Map<String, dynamic>>>>
+      _thresholds = {};
 
   // -----------------
   // Read / access
   // -----------------
-  Map<String, Map<String, Map<String, Map<String, dynamic>>>> asNestedMap() => _thresholds;
+  Map<String, Map<String, Map<String, Map<String, dynamic>>>> asNestedMap() =>
+      _thresholds;
 
   /// Get a deep copy view for external use if needed
   Map<String, dynamic> asMap() {
@@ -90,14 +91,23 @@ class ThresholdService {
   /// Notes:
   /// - `subItem == ''` represents item‑level thresholds
   /// - This updates in‑memory state ONLY
-  void setThreshold({required String category, required String item, String? subItem, required String weight, int? threshold}) {
+  void setThreshold(
+      {required String category,
+      required String item,
+      String? subItem,
+      required String weight,
+      int? threshold}) {
     final s = (subItem ?? '').trim();
     _ensureCategoryItemSub(category, item, s);
     _thresholds[category]![item]![s]![weight] = threshold;
   }
 
   /// Remove a threshold key; cleans empty maps on the way up
-  void removeThreshold({required String category, required String item, String? subItem, required String weight}) {
+  void removeThreshold(
+      {required String category,
+      required String item,
+      String? subItem,
+      required String weight}) {
     final s = (subItem ?? '').trim();
     final cat = _thresholds[category];
     if (cat == null) return;
@@ -111,7 +121,8 @@ class ThresholdService {
   }
 
   /// Helper to rename a key in a map while preserving its index/order.
-  void _renameKeyInOrderedMap<V>(Map<String, V> map, String oldKey, String newKey) {
+  void _renameKeyInOrderedMap<V>(
+      Map<String, V> map, String oldKey, String newKey) {
     if (!map.containsKey(oldKey)) return;
     if (map.containsKey(newKey)) return;
 
@@ -120,7 +131,7 @@ class ThresholdService {
     if (index == -1) return;
 
     final value = entries[index].value;
-    
+
     // Rebuild map
     map.clear();
     for (int i = 0; i < entries.length; i++) {
@@ -142,7 +153,8 @@ class ThresholdService {
     _renameKeyInOrderedMap(catMap, oldName, newName);
   }
 
-  void renameSubItem(String category, String item, String oldName, String newName) {
+  void renameSubItem(
+      String category, String item, String oldName, String newName) {
     final catMap = _thresholds[category];
     if (catMap == null) return;
     final itemMap = catMap[item];
@@ -172,7 +184,9 @@ class ThresholdService {
           return wm[w];
         }
       } catch (e) {
-         developer.log('ThresholdService.tryLookup failed: $cat|$it|$sub|$w -> $e', name: 'ThresholdService');
+        developer.log(
+            'ThresholdService.tryLookup failed: $cat|$it|$sub|$w -> $e',
+            name: 'ThresholdService');
       }
       return null;
     }
@@ -195,24 +209,6 @@ class ThresholdService {
     return null;
   }
 
-  /// Recursively sanitize a dynamic structure so all Map keys are Strings and
-  /// nested Maps/Lists are converted to Firestore-friendly types.
-  Map<String, dynamic> _sanitizeToMap(dynamic input) {
-    if (input is Map) {
-      final out = <String, dynamic>{};
-      input.forEach((k, v) {
-        final keyStr = k.toString();
-        out[keyStr] = _sanitizeToMap(v);
-      });
-      return out;
-    }
-    if (input is List) {
-      return {'_list': input.map((e) => _sanitizeToMap(e)).toList()};
-    }
-    // primitive
-    return {'_value': input};
-  }
-
   /// Encode a human‑readable key into a Firestore‑safe identifier.
   ///
   /// Firestore rules:
@@ -233,7 +229,6 @@ class ThresholdService {
     if (k.isEmpty) return '__default';
     return k.replaceAll('.', '_').replaceAll('/', '_');
   }
-
 
   // _ensureInventoryPath removed to prevent destructive overwrites.
   // Inventory structure is no longer mirrored from Thresholds.
@@ -262,7 +257,8 @@ class ThresholdService {
 
       // 2. Separate Data Docs
       final docsMap = {for (var d in snaps.docs) d.id: d.data()};
-      docsMap.remove('_layout'); // Ensure layout doc is not processed as a category
+      docsMap.remove(
+          '_layout'); // Ensure layout doc is not processed as a category
 
       _thresholds.clear();
 
@@ -272,7 +268,8 @@ class ThresholdService {
         ...docsMap.keys, // Append any new/unknown categories at the end
       };
 
-      String decode(String s) => s.startsWith('__') ? s : s.replaceAll('_', '.');
+      String decode(String s) =>
+          s.startsWith('__') ? s : s.replaceAll('_', '.');
 
       for (final catKeyRaw in orderedCategories) {
         final catKey = decode(catKeyRaw);
@@ -318,21 +315,24 @@ class ThresholdService {
 
           for (final subKeyRaw in orderedSubItems) {
             // Skip internal keys at sub-item level if any, EXCEPT __metadata (used for WeightMode)
-            if (subKeyRaw.toString().startsWith('__') && subKeyRaw != '__metadata') continue;
-            
+            if (subKeyRaw.toString().startsWith('__') &&
+                subKeyRaw != '__metadata') {
+              continue;
+            }
+
             final subKey = decode(subKeyRaw.toString());
             final subVal = subItemsMap[subKeyRaw]; // Lookup using raw subKey
 
             if (subVal is! Map) continue;
-            
+
             _ensureCategoryItemSub(catKey, itemKey, subKey);
 
             // Extract Weight Order
             List<String> weightOrder = [];
             if (subVal['__weight_order'] is List) {
-               weightOrder = List<String>.from(subVal['__weight_order']);
+              weightOrder = List<String>.from(subVal['__weight_order']);
             }
-            
+
             final weightsMap = Map<String, dynamic>.from(subVal);
             weightsMap.remove('__weight_order');
 
@@ -345,31 +345,33 @@ class ThresholdService {
               if (wKeyRaw.toString().startsWith('__')) continue;
 
               // Don't decode content inside metadata
-              final wKey = (subKey == '__metadata') 
-                  ? wKeyRaw.toString() 
+              final wKey = (subKey == '__metadata')
+                  ? wKeyRaw.toString()
                   : decode(wKeyRaw.toString());
-              
+
               final val = weightsMap[wKeyRaw];
 
               // Hardening: Block corrupted data (Maps/Lists) but try to recover wrapped values
               if (subKey != '__metadata' && (val is Map || val is List)) {
-                 // RECOVERY: Check if it's a wrapped value from the bug
-                 if (val is Map && val.containsKey('_value')) {
-                    _thresholds[catKey]![itemKey]![subKey]![wKey] = val['_value'];
-                    continue; 
-                 }
+                // RECOVERY: Check if it's a wrapped value from the bug
+                if (val is Map && val.containsKey('_value')) {
+                  _thresholds[catKey]![itemKey]![subKey]![wKey] = val['_value'];
+                  continue;
+                }
 
-                 // RECOVERY: If it's an empty map (common corruption pattern), treat as valid null (unset threshold)
-                 // This restores the "button" even if the threshold number is lost.
-                 if (val is Map && val.isEmpty) {
-                    _thresholds[catKey]![itemKey]![subKey]![wKey] = null;
-                    continue; 
-                 }
+                // RECOVERY: If it's an empty map (common corruption pattern), treat as valid null (unset threshold)
+                // This restores the "button" even if the threshold number is lost.
+                if (val is Map && val.isEmpty) {
+                  _thresholds[catKey]![itemKey]![subKey]![wKey] = null;
+                  continue;
+                }
 
-                 developer.log('ThresholdService: Ignoring corrupted weight value for $wKey: $val', name: 'ThresholdService');
-                 continue;
+                developer.log(
+                    'ThresholdService: Ignoring corrupted weight value for $wKey: $val',
+                    name: 'ThresholdService');
+                continue;
               }
-                  
+
               _thresholds[catKey]![itemKey]![subKey]![wKey] = val;
             }
           }
@@ -378,7 +380,8 @@ class ThresholdService {
       // Backfill disabled to prevent overwriting existing inventory values with empty maps
       // await backfillInventoryFromThresholds();
     } catch (e, st) {
-      developer.log('ThresholdService.load failed: $e', error: e, stackTrace: st, name: 'ThresholdService');
+      developer.log('ThresholdService.load failed: $e',
+          error: e, stackTrace: st, name: 'ThresholdService');
     }
   }
 
@@ -396,24 +399,28 @@ class ThresholdService {
       // If firebase isn't initialized, avoid calling Firestore (prevents native crashes)
       try {
         if (Firebase.apps.isEmpty) {
-          developer.log('ThresholdService.save(): Firebase not initialized; skipping save.', name: 'ThresholdService');
+          developer.log(
+              'ThresholdService.save(): Firebase not initialized; skipping save.',
+              name: 'ThresholdService');
           return;
         }
       } catch (e) {
         // Firebase not available in this runtime; log and skip
-        developer.log('ThresholdService.save(): Firebase.check failed: $e', name: 'ThresholdService');
+        developer.log('ThresholdService.save(): Firebase.check failed: $e',
+            name: 'ThresholdService');
         return;
       }
 
       // Build the raw payload as before
       final Map<String, dynamic> payload = {};
-      
+
       // Capture Order Metadata from current in-memory insertion order
-      final List<String> categoryOrder = _thresholds.keys.map(_safeKey).toList();
-      
+      final List<String> categoryOrder =
+          _thresholds.keys.map(_safeKey).toList();
+
       _thresholds.forEach((cat, itemMap) {
         final Map<String, dynamic> itemPayload = {};
-        
+
         // Item Order
         final List<String> itemOrder = itemMap.keys
             .where((k) => !k.startsWith('__'))
@@ -423,7 +430,7 @@ class ThresholdService {
 
         itemMap.forEach((item, subMap) {
           final Map<String, dynamic> subPayload = {};
-          
+
           // Sub-item Order
           final List<String> subItemOrder = subMap.keys
               .where((k) => k != 'shared' && !k.startsWith('__'))
@@ -433,7 +440,7 @@ class ThresholdService {
 
           subMap.forEach((subItem, weightMap) {
             final Map<String, dynamic> weightPayload = {};
-            
+
             // Weight Order
             final List<String> weightOrder = weightMap.keys
                 .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
@@ -456,14 +463,16 @@ class ThresholdService {
 
       // DIRECT SAVE: Removed faulty sanitization/wrapping logic that was corrupting data
       final sanitized = payload;
-      
+
       try {
-         developer.log('ThresholdService.save(): payload size = ${sanitized.length} categories', name: 'ThresholdService');
+        developer.log(
+            'ThresholdService.save(): payload size = ${sanitized.length} categories',
+            name: 'ThresholdService');
       } catch (_) {}
 
       // Write one document per category (exact mirror of inventory)
       final col = FirebaseFirestore.instance.collection('thresholds');
-      
+
       // 1. Save Category Order Layout
       await col.doc('_layout').set({
         'categories': categoryOrder,
@@ -475,14 +484,15 @@ class ThresholdService {
         final data = entry.value;
         if (data is! Map) continue;
 
-        final Map<String, dynamic> typed =
-        Map<String, dynamic>.from(data);
+        final Map<String, dynamic> typed = Map<String, dynamic>.from(data);
 
         await col.doc(cat).set(typed, SetOptions(merge: false));
       }
-      developer.log('ThresholdService.save(): write completed', name: 'ThresholdService');
+      developer.log('ThresholdService.save(): write completed',
+          name: 'ThresholdService');
     } catch (e, st) {
-      developer.log('ThresholdService.save failed: $e', error: e, stackTrace: st, name: 'ThresholdService');
+      developer.log('ThresholdService.save failed: $e',
+          error: e, stackTrace: st, name: 'ThresholdService');
       // swallow errors to avoid crashing the UI; caller can re-attempt
     }
   }

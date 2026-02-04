@@ -19,7 +19,8 @@ class SettingsScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
               'Appearance',
               style: TextStyle(
@@ -40,11 +41,14 @@ class SettingsScreen extends StatelessWidget {
             onChanged: (value) {
               globalState.toggleTheme();
             },
-            activeColor: theme.primaryColor,
+            activeThumbColor:
+                theme.floatingActionButtonTheme.foregroundColor ?? Colors.white,
+            activeTrackColor: theme.primaryColor,
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
               'About',
               style: TextStyle(

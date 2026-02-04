@@ -26,11 +26,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        elevation: 0,
-        leading: Navigator.canPop(context) ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.maybePop(context),
-        ) : null,
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
         title: const Text(
           'Dashboard',
         ),
@@ -41,13 +42,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(width: 8),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: Theme.of(context).dividerColor,
-            height: 1,
-          ),
-        ),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -63,7 +57,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Inventory',
                   description: 'Track and manage your stock',
                   icon: Icons.inventory_2_outlined,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.inventory),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.inventory),
                 ),
                 DashboardCard(
                   title: 'Reorder List',
@@ -75,7 +70,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Thresholds',
                   description: 'Set thresholds for each item individually',
                   icon: Icons.tune_outlined,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.thresholds),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.thresholds),
                 ),
               ],
             ),
@@ -111,9 +107,10 @@ class _DashboardCardState extends State<DashboardCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
-    
+
     // Unified width for both Light and Dark modes to match "outer rectangles"
-    final double cardWidth = Responsive.isMobile(context) ? double.infinity : 300.0;
+    final double cardWidth =
+        Responsive.isMobile(context) ? double.infinity : 300.0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -130,7 +127,7 @@ class _DashboardCardState extends State<DashboardCard> {
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: theme.primaryColor.withOpacity(0.1),
+                      color: theme.primaryColor.withValues(alpha: 0.1),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -160,9 +157,9 @@ class _DashboardCardState extends State<DashboardCard> {
                 widget.description,
                 style: TextStyle(
                   fontSize: Responsive.textSize(context, base: 14),
-                  color: isLight 
-                      ? theme.primaryColor.withOpacity(0.8) 
-                      : Colors.white.withOpacity(0.7),
+                  color: isLight
+                      ? theme.primaryColor.withValues(alpha: 0.8)
+                      : Colors.white.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),

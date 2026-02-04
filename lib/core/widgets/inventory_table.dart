@@ -15,16 +15,21 @@ class InventoryTable extends StatefulWidget {
   final String title;
   final String category;
   final String item;
+
   /// When true, renders only the table content (no Scaffold/AppBar/FAB)
   final bool embed;
 
   final InventoryTableMode mode;
-  final int? Function({required String subItem, required String weight}) getValue;
-  final Future<void> Function({required String subItem, required String weight, required int? value}) setValue;
+  final int? Function({required String subItem, required String weight})
+      getValue;
+  final Future<void> Function(
+      {required String subItem,
+      required String weight,
+      required int? value}) setValue;
   final List<String> subItems;
   final List<String> Function(String subItem) weightsForSubItem;
 
-const InventoryTable({
+  const InventoryTable({
     super.key,
     required this.title,
     required this.category,
@@ -49,7 +54,8 @@ class _InventoryTableState extends State<InventoryTable> {
   Widget build(BuildContext context) {
     const double cellWidth = 88;
 
-    List<String> filteredSubItems = widget.subItems.where((s) => s.trim().isNotEmpty).toList();
+    List<String> filteredSubItems =
+        widget.subItems.where((s) => s.trim().isNotEmpty).toList();
 
     if (filteredSubItems.isEmpty) {
       return Scaffold(
@@ -62,11 +68,15 @@ class _InventoryTableState extends State<InventoryTable> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final availableHeight = screenHeight - kToolbarHeight - MediaQuery.of(context).padding.top - 100;
-    final rowHeight = (availableHeight / (filteredSubItems.length + 1)).clamp(68.0, 120.0);
+    final availableHeight = screenHeight -
+        kToolbarHeight -
+        MediaQuery.of(context).padding.top -
+        100;
+    final rowHeight =
+        (availableHeight / (filteredSubItems.length + 1)).clamp(68.0, 120.0);
     final fontSize = Responsive.textSize(context, base: 16);
 
-    final typeColWidthRaw = (screenWidth / 3.3); 
+    final typeColWidthRaw = (screenWidth / 3.3);
     final typeColWidth = (typeColWidthRaw.clamp(100.0, screenWidth));
 
     final bool isThreshold = widget.mode == InventoryTableMode.threshold;
@@ -89,10 +99,12 @@ class _InventoryTableState extends State<InventoryTable> {
                   (() {
                     // Use weights from the first sub-item as the shared schema
                     final firstSub = filteredSubItems.first;
-                    final weights = widget.weightsForSubItem(firstSub)
-                        .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
+                    final weights = widget
+                        .weightsForSubItem(firstSub)
+                        .where(
+                            (w) => w.trim().isNotEmpty && !w.startsWith('__'))
                         .toList();
-  
+
                     return Row(
                       children: [
                         Container(
@@ -100,10 +112,13 @@ class _InventoryTableState extends State<InventoryTable> {
                           height: rowHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant(context),
+                            color: AppColors.shimmerBase(context),
                             border: Border(
-                              right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
-                              bottom: BorderSide(color: AppColors.borderGrey(context)),
+                              right: BorderSide(
+                                  color: AppColors.borderGrey(context),
+                                  width: 1.0),
+                              bottom: BorderSide(
+                                  color: AppColors.borderGrey(context)),
                             ),
                           ),
                           alignment: Alignment.centerLeft,
@@ -112,100 +127,112 @@ class _InventoryTableState extends State<InventoryTable> {
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: fontSize,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ),
                         ...weights.map((w) => Container(
-                          width: cellWidth,
-                          height: rowHeight,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant(context),
-                            border: Border(
-                              right: BorderSide(color: AppColors.borderGrey(context)),
-                              bottom: BorderSide(color: AppColors.borderGrey(context)),
-                            ),
-                          ),
-                          child: Text(
-                            w,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: fontSize,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        )),
+                              width: cellWidth,
+                              height: rowHeight,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.shimmerBase(context),
+                                border: Border(
+                                  right: BorderSide(
+                                      color: AppColors.borderGrey(context)),
+                                  bottom: BorderSide(
+                                      color: AppColors.borderGrey(context)),
+                                ),
+                              ),
+                              child: Text(
+                                w,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: fontSize,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            )),
                       ],
                     );
                   })(),
                 ],
-                
                 ...filteredSubItems.expand((subItem) {
                   // Determine weights for this sub-item
-                  final weights = widget.weightsForSubItem(subItem)
+                  final weights = widget
+                      .weightsForSubItem(subItem)
                       .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
                       .toList();
-  
+
                   if (weights.isEmpty) {
-                     return <Widget>[
-                       Row(
-                         children: [
-                           Container(
-                             width: typeColWidth,
-                             height: rowHeight,
-                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                             decoration: BoxDecoration(
-                               color: AppColors.surfaceVariant(context),
-                               border: Border(
-                                 right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
-                                 bottom: BorderSide(color: AppColors.borderGrey(context)),
-                               ),
-                             ),
-                             alignment: Alignment.centerLeft,
-                             child: Text(
-                               'Type',
-                               style: TextStyle(
-                                 fontWeight: FontWeight.w600,
-                                 fontSize: fontSize,
-                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
-                               ),
-                             ),
-                           ),
-                           // Message Cell
-                           Expanded(
-                             child: Container(
-                               height: rowHeight,
-                               alignment: Alignment.centerLeft,
-                               padding: const EdgeInsets.only(left: 12),
-                               decoration: BoxDecoration(
-                                 color: Theme.of(context).cardColor,
-                                 border: Border(
-                                   bottom: BorderSide(color: Theme.of(context).dividerColor),
-                                 ),
-                               ),
-                               child: Text(
-                                 'Add weights for ${subItem == 'shared' ? 'Shared' : subItem}',
-                                 style: TextStyle(
-                                   fontStyle: FontStyle.italic,
-                                   color: AppColors.textGrey(context),
-                                   fontSize: fontSize,
-                                 ),
-                               ),
-                             ),
-                           ),
-                         ],
-                       ),
-                       // Value Row (Placeholder or just skip?)
-                       // The user said "I need the same message... also all similar messages should propagate"
-                       // In Inventory mode, usually we might just show the message row.
-                       // Let's mirror the "Header" style row above but with message.
-                     ];
+                    return <Widget>[
+                      Row(
+                        children: [
+                          Container(
+                            width: typeColWidth,
+                            height: rowHeight,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.shimmerBase(context),
+                              border: Border(
+                                right: BorderSide(
+                                    color: AppColors.borderGrey(context),
+                                    width: 1.0),
+                                bottom: BorderSide(
+                                    color: AppColors.borderGrey(context)),
+                              ),
+                            ),
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Type',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: fontSize,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          // Message Cell
+                          Expanded(
+                            child: Container(
+                              height: rowHeight,
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                border: Border(
+                                  bottom: BorderSide(
+                                      color: AppColors.borderGrey(context)),
+                                ),
+                              ),
+                              child: Text(
+                                'Add weights for ${subItem == 'shared' ? 'Shared' : subItem}',
+                                style: TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.textGrey(context),
+                                  fontSize: fontSize,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Value Row (Placeholder or just skip?)
+                      // The user said "I need the same message... also all similar messages should propagate"
+                      // In Inventory mode, usually we might just show the message row.
+                      // Let's mirror the "Header" style row above but with message.
+                    ];
                   }
-  
+
                   // If NOT shared weights, we repeat the header for EVERY sub-item
                   final showHeader = !widget.isSharedWeights;
-  
+
                   return [
                     if (showHeader)
                       Row(
@@ -215,10 +242,13 @@ class _InventoryTableState extends State<InventoryTable> {
                             height: rowHeight,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant(context),
+                              color: AppColors.shimmerBase(context),
                               border: Border(
-                                right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
-                                bottom: BorderSide(color: AppColors.borderGrey(context)),
+                                right: BorderSide(
+                                    color: AppColors.borderGrey(context),
+                                    width: 1.0),
+                                bottom: BorderSide(
+                                    color: AppColors.borderGrey(context)),
                               ),
                             ),
                             alignment: Alignment.centerLeft,
@@ -227,33 +257,39 @@ class _InventoryTableState extends State<InventoryTable> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: fontSize,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                             ),
                           ),
                           ...weights.map((w) => Container(
-                            width: cellWidth,
-                            height: rowHeight,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant(context),
-                              border: Border(
-                                right: BorderSide(color: AppColors.borderGrey(context)),
-                                bottom: BorderSide(color: AppColors.borderGrey(context)),
-                              ),
-                            ),
-                            child: Text(
-                              w,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: fontSize,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          )),
+                                width: cellWidth,
+                                height: rowHeight,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.shimmerBase(context),
+                                  border: Border(
+                                    right: BorderSide(
+                                        color: AppColors.borderGrey(context)),
+                                    bottom: BorderSide(
+                                        color: AppColors.borderGrey(context)),
+                                  ),
+                                ),
+                                child: Text(
+                                  w,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: fontSize,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                              )),
                         ],
                       ),
-  
+
                     // The Value Row
                     Row(
                       children: [
@@ -264,16 +300,22 @@ class _InventoryTableState extends State<InventoryTable> {
                           decoration: BoxDecoration(
                             color: AppColors.shimmerBase(context),
                             border: Border(
-                              right: BorderSide(color: Theme.of(context).dividerColor, width: 1.5),
-                              bottom: BorderSide(color: AppColors.borderGrey(context)),
+                              right: BorderSide(
+                                  color: AppColors.borderGrey(context),
+                                  width: 1.0),
+                              bottom: BorderSide(
+                                  color: AppColors.borderGrey(context)),
                             ),
                           ),
                           alignment: Alignment.centerLeft,
                           child: (() {
-                            final label = subItem == 'shared' ? 'Shared' : subItem;
-                            final assetPath = Helpers.getSubItemImage(widget.category, label);
-                            final bool isJhumkis = widget.category.toUpperCase() == 'JHUMKIS';
-                            
+                            final label =
+                                subItem == 'shared' ? 'Shared' : subItem;
+                            final assetPath =
+                                Helpers.getSubItemImage(widget.category, label);
+                            final bool isJhumkis =
+                                widget.category.toUpperCase() == 'JHUMKIS';
+
                             if (assetPath != null) {
                               if (isJhumkis) {
                                 // For Jhumkis, show BOTH image and text in a Column
@@ -286,7 +328,9 @@ class _InventoryTableState extends State<InventoryTable> {
                                         child: Image.asset(
                                           assetPath,
                                           fit: BoxFit.contain,
-                                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, size: 16),
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Icon(Icons.image, size: 16),
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -294,7 +338,8 @@ class _InventoryTableState extends State<InventoryTable> {
                                         label,
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          fontSize: fontSize * 0.75, // Slightly smaller text
+                                          fontSize: fontSize *
+                                              0.75, // Slightly smaller text
                                           fontWeight: FontWeight.w600,
                                         ),
                                         maxLines: 2,
@@ -310,15 +355,18 @@ class _InventoryTableState extends State<InventoryTable> {
                                   child: Image.asset(
                                     assetPath,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) => Text(
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Text(
                                       label,
-                                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                          fontSize: fontSize,
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 );
                               }
                             }
-                            
+
                             return Text(
                               label,
                               style: TextStyle(
@@ -329,46 +377,71 @@ class _InventoryTableState extends State<InventoryTable> {
                           })(),
                         ),
                         ...weights.map((weight) {
-                          final value = widget.getValue(subItem: subItem, weight: weight);
+                          final value =
+                              widget.getValue(subItem: subItem, weight: weight);
                           return Container(
                             width: cellWidth,
                             height: rowHeight,
                             decoration: BoxDecoration(
                               border: Border(
-                                right: BorderSide(color: Theme.of(context).dividerColor),
-                                bottom: BorderSide(color: Theme.of(context).dividerColor),
+                                right: BorderSide(
+                                    color: AppColors.borderGrey(context)),
+                                bottom: BorderSide(
+                                    color: AppColors.borderGrey(context)),
                               ),
                             ),
                             child: EditableCell(
                               initialValue: value,
                               colorResolver: (v) {
-                                  // Threshold mode -> always neutral
-                                  if (isThreshold) return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
-                                  
-                                  // Inventory mode -> check threshold
-                                  if (v == null) return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
-  
-                                  // Access GlobalState to get the configured threshold
-                                  final globalState = Provider.of<GlobalState>(context, listen: false);
-                                  final threshold = globalState.getThresholdFor(
-                                    category: widget.category,
-                                    item: widget.item,
-                                    subItem: subItem, // Thresholds are stored per sub-item (even shared ones are copied)
-                                    weight: weight,
-                                  );
-  
-                                  if (threshold == null) {
-                                    // No threshold configured -> Grey
-                                    return Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900;
-                                  }
-  
-                                  if (v < threshold) {
-                                    // Below threshold -> Red
-                                    return Theme.of(context).brightness == Brightness.light ? Colors.red.shade100 : Colors.red.shade900;
-                                  } else {
-                                    // At or above threshold -> Green
-                                    return Theme.of(context).brightness == Brightness.light ? Colors.green.shade100 : Colors.green.shade900;
-                                  }
+                                // Threshold mode -> always neutral
+                                if (isThreshold) {
+                                  return Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.grey.shade100
+                                      : Colors.grey.shade900;
+                                }
+
+                                // Inventory mode -> check threshold
+                                if (v == null) {
+                                  return Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.grey.shade100
+                                      : Colors.grey.shade900;
+                                }
+
+                                // Access GlobalState to get the configured threshold
+                                final globalState = Provider.of<GlobalState>(
+                                    context,
+                                    listen: false);
+                                final threshold = globalState.getThresholdFor(
+                                  category: widget.category,
+                                  item: widget.item,
+                                  subItem:
+                                      subItem, // Thresholds are stored per sub-item (even shared ones are copied)
+                                  weight: weight,
+                                );
+
+                                if (threshold == null) {
+                                  // No threshold configured -> Grey
+                                  return Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.grey.shade100
+                                      : Colors.grey.shade900;
+                                }
+
+                                if (v < threshold) {
+                                  // Below threshold -> Red
+                                  return Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.red.shade100
+                                      : Colors.red.shade900;
+                                } else {
+                                  // At or above threshold -> Green
+                                  return Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.green.shade100
+                                      : Colors.green.shade900;
+                                }
                               },
                               onValueSaved: (parsed) async {
                                 await widget.setValue(
@@ -389,7 +462,8 @@ class _InventoryTableState extends State<InventoryTable> {
           ),
         ),
       ),
-    ); if (widget.embed) {
+    );
+    if (widget.embed) {
       return Card(
         margin: EdgeInsets.zero,
         child: Padding(
@@ -403,5 +477,4 @@ class _InventoryTableState extends State<InventoryTable> {
       body: tableContent,
     );
   }
-
 }

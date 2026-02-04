@@ -26,9 +26,17 @@ class ThresholdsPage extends StatelessWidget {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            style: Theme.of(context).brightness == Brightness.light
+                ? ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).cardColor,
+                    foregroundColor: Theme.of(context).primaryColor,
+                  )
+                : null,
             child: const Text('Create'),
           ),
         ],
@@ -72,13 +80,13 @@ class ThresholdsPage extends StatelessWidget {
                 ? ShimmerLoading.list(
                     itemCount: 4,
                     itemBuilder: (context, index) => Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          height: 56, // Match ListTile height + padding
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6),
-                            color: AppColors.shimmerBase(context),
-                          ),
-                        ),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      height: 56, // Match ListTile height + padding
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: AppColors.shimmerBase(context),
+                      ),
+                    ),
                   )
                 : vm.categories.isEmpty
                     ? Center(
@@ -91,8 +99,12 @@ class ThresholdsPage extends StatelessWidget {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showCreateCategoryDialog(context),
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
+            backgroundColor: Theme.of(context).brightness == Brightness.light
+                ? Theme.of(context).cardColor
+                : Theme.of(context).primaryColor,
+            foregroundColor: Theme.of(context).brightness == Brightness.light
+                ? Theme.of(context).primaryColor
+                : Colors.white,
             child: const Icon(Icons.add),
           ),
         );

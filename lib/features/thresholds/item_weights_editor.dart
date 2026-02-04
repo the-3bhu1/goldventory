@@ -7,7 +7,8 @@ import '../../core/utils/helpers.dart';
 class ItemWeightsEditor extends StatefulWidget {
   final String category;
   final String item;
-  const ItemWeightsEditor({super.key, required this.category, required this.item});
+  const ItemWeightsEditor(
+      {super.key, required this.category, required this.item});
 
   @override
   State<ItemWeightsEditor> createState() => _ItemWeightsEditorState();
@@ -20,7 +21,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
   final Map<String, TextEditingController> _perSubCtrls = {};
   final TextEditingController _addCtrl = TextEditingController();
   WeightMode? _mode;
-  
+
   // Dirty check state
   bool _hydrated = false;
   WeightMode? _initialMode;
@@ -40,7 +41,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     final text = _addCtrl.text.trim();
     if (text.isEmpty) return;
     if (_sharedWeights.contains(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight already exists')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Weight already exists')));
       return;
     }
     setState(() => _sharedWeights.add(text));
@@ -52,7 +54,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     if (text.isEmpty) return;
     final weights = _perSubItemWeights[subItem] ?? [];
     if (weights.contains(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Weight already exists')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Weight already exists')));
       return;
     }
     setState(() {
@@ -88,7 +91,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     } else if (_mode == WeightMode.perSubItem) {
       // Persist per-sub-item weights ONLY (no thresholds)
       _perSubItemWeights.forEach((subItem, weights) {
-        vm.setItemWeightsForSubItem(widget.category, widget.item, subItem, weights);
+        vm.setItemWeightsForSubItem(
+            widget.category, widget.item, subItem, weights);
       });
     }
 
@@ -107,9 +111,11 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     if (_mode == WeightMode.shared) {
       return !Helpers.areListsEqual(_sharedWeights, _initialSharedWeights);
     }
-    
+
     if (_mode == WeightMode.perSubItem) {
-      if (_perSubItemWeights.length != _initialPerSubItemWeights.length) return true;
+      if (_perSubItemWeights.length != _initialPerSubItemWeights.length) {
+        return true;
+      }
       for (final key in _perSubItemWeights.keys) {
         if (!_initialPerSubItemWeights.containsKey(key)) return true;
         if (!Helpers.areListsEqual(
@@ -119,7 +125,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       }
       return false;
     }
-    
+
     return false;
   }
 
@@ -147,8 +153,9 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
 
     // SHARED MODE — hydrate once
     if (_mode == WeightMode.shared && _sharedWeights.isEmpty) {
-      List<String> resolved = vm.sharedWeightsForItem(widget.category, widget.item);
-      
+      List<String> resolved =
+          vm.sharedWeightsForItem(widget.category, widget.item);
+
       // Fallback to searching sub-items if explicitly shared key is empty
       if (resolved.isEmpty) {
         for (final s in subs) {
@@ -159,7 +166,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
           }
         }
       }
-      
+
       _sharedWeights = [...resolved]
         ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
     }
@@ -178,20 +185,20 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
     // Capture initial state ONCE
     if (!_hydrated) {
       _initialMode = _mode;
-      
+
       // We must copy the lists carefully
       _initialSharedWeights = [..._sharedWeights];
-      
+
       _initialPerSubItemWeights = {};
       _perSubItemWeights.forEach((k, v) {
         _initialPerSubItemWeights[k] = [...v];
       });
-      
+
       // If we successfully loaded something (or even if empty start), mark hydrated
       // Wait, if _mode is null initially?
       // If _mode is null, we are just starting fresh.
       // But _mode is assigned above: _mode ??= vm.weightModeFor...
-      
+
       _hydrated = true;
     }
 
@@ -200,7 +207,6 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
         title: Text('${widget.item} - Add weights'),
       ),
       body: Padding(
-
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
@@ -208,34 +214,64 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
               spacing: 8,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
+              children: [
                 const Padding(
                   padding: EdgeInsets.only(right: 4.0),
                   child: Text('Mode:'),
                 ),
                 ChoiceChip(
-                  label: const Text('Shared weights'),
+                  label: Text(
+                    'Shared weights',
+                    style: TextStyle(
+                      color: _mode == WeightMode.shared &&
+                              Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).primaryColor
+                          : null,
+                    ),
+                  ),
                   selected: _mode == WeightMode.shared,
-                  selectedColor: Theme.of(context).primaryColor,
+                  selectedColor:
+                      Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).cardColor
+                          : Theme.of(context).primaryColor,
                   backgroundColor: AppTheme.getHighlightBackground(context),
-                  checkmarkColor: Colors.white,
+                  checkmarkColor:
+                      Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).primaryColor
+                          : Colors.white,
                   onSelected: (_) {
                     final vm = context.read<ThresholdsViewModel>();
-                    vm.setWeightMode(widget.category, widget.item, WeightMode.shared);
+                    vm.setWeightMode(
+                        widget.category, widget.item, WeightMode.shared);
                     setState(() {
                       _mode = WeightMode.shared;
                     });
                   },
                 ),
                 ChoiceChip(
-                  label: const Text('Per sub-item'),
+                  label: Text(
+                    'Per sub-item',
+                    style: TextStyle(
+                      color: _mode == WeightMode.perSubItem &&
+                              Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).primaryColor
+                          : null,
+                    ),
+                  ),
                   selected: _mode == WeightMode.perSubItem,
-                  selectedColor: Theme.of(context).primaryColor,
+                  selectedColor:
+                      Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).cardColor
+                          : Theme.of(context).primaryColor,
                   backgroundColor: AppTheme.getHighlightBackground(context),
-                  checkmarkColor: Colors.white,
+                  checkmarkColor:
+                      Theme.of(context).brightness == Brightness.light
+                          ? Theme.of(context).primaryColor
+                          : Colors.white,
                   onSelected: (_) {
                     final vm = context.read<ThresholdsViewModel>();
-                    vm.setWeightMode(widget.category, widget.item, WeightMode.perSubItem);
+                    vm.setWeightMode(
+                        widget.category, widget.item, WeightMode.perSubItem);
                     setState(() {
                       _mode = WeightMode.perSubItem;
                     });
@@ -261,7 +297,18 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton(onPressed: _addSharedWeight, child: const Text('Add'))
+                          ElevatedButton(
+                              onPressed: _addSharedWeight,
+                              style: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          Theme.of(context).cardColor,
+                                      foregroundColor:
+                                          Theme.of(context).primaryColor,
+                                    )
+                                  : null,
+                              child: const Text('Add'))
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -271,10 +318,14 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _sharedWeights.map((w) => Chip(
-                            label: Text(w),
-                            backgroundColor: AppTheme.getHighlightBackground(context),
-                          )).toList(),
+                          children: _sharedWeights
+                              .map((w) => Chip(
+                                    label: Text(w),
+                                    backgroundColor:
+                                        AppTheme.getHighlightBackground(
+                                            context),
+                                  ))
+                              .toList(),
                         ),
                       ),
                     ],
@@ -285,13 +336,14 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
               Expanded(
                 child: ListView(
                   children: (_perSubItemWeights.keys.toList()
-                  // ..sort(_naturalSubItemSort)) // Removed sorting
-                  )
+                      // ..sort(_naturalSubItemSort)) // Removed sorting
+                      )
                       .map((subItem) {
                     final ctrl = _perSubCtrls[subItem]!;
                     final weights = _perSubItemWeights[subItem] ?? [];
 
-                    final assetPath = Helpers.getSubItemImage(widget.category, subItem);
+                    final assetPath =
+                        Helpers.getSubItemImage(widget.category, subItem);
 
                     return ExpansionTile(
                       title: assetPath != null
@@ -302,7 +354,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                                   width: 32,
                                   height: 32,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.image),
+                                  errorBuilder: (_, __, ___) =>
+                                      const Icon(Icons.image),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(subItem),
@@ -327,6 +380,15 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                                 onPressed: () {
                                   _addPerSubItemWeight(subItem, ctrl);
                                 },
+                                style: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            Theme.of(context).cardColor,
+                                        foregroundColor:
+                                            Theme.of(context).primaryColor,
+                                      )
+                                    : null,
                                 child: const Text('Add'),
                               ),
                             ],
@@ -338,11 +400,17 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                             spacing: 8,
                             runSpacing: 8,
                             children: (() {
-                              final sorted = [...weights]; // ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
-                              return sorted.map((w) => Chip(
-                                label: Text(w),
-                                backgroundColor: AppTheme.getHighlightBackground(context),
-                              )).toList();
+                              final sorted = [
+                                ...weights
+                              ]; // ..sort((a, b) => _safeNum(a).compareTo(_safeNum(b)));
+                              return sorted
+                                  .map((w) => Chip(
+                                        label: Text(w),
+                                        backgroundColor:
+                                            AppTheme.getHighlightBackground(
+                                                context),
+                                      ))
+                                  .toList();
                             })(),
                           ),
                         ),
@@ -362,7 +430,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                 ),
               ),
             const SizedBox(height: 12),
-            if (_mode != null && ((_mode == WeightMode.shared && _sharedWeights.isNotEmpty) || (_mode == WeightMode.perSubItem && _perSubItemWeights.isNotEmpty)))
+            if (_mode != null &&
+                ((_mode == WeightMode.shared && _sharedWeights.isNotEmpty) ||
+                    (_mode == WeightMode.perSubItem &&
+                        _perSubItemWeights.isNotEmpty)))
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
@@ -377,11 +448,17 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
               children: [
                 Expanded(
                   child: SizedBox(
-                   height: 48,
-                   child: ElevatedButton(
-                    onPressed: _canSave ? _saveWeights : null,
-                    child: const Text('Save'),
-                   ),
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _canSave ? _saveWeights : null,
+                      style: Theme.of(context).brightness == Brightness.light
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).cardColor,
+                              foregroundColor: Theme.of(context).primaryColor,
+                            )
+                          : null,
+                      child: const Text('Save'),
+                    ),
                   ),
                 ),
               ],

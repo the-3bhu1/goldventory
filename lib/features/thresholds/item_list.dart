@@ -20,7 +20,6 @@ class ItemList extends StatefulWidget {
 }
 
 class _ItemListState extends State<ItemList> {
-
   Future<void> _showCreateItemDialog(BuildContext context) async {
     final controller = TextEditingController();
     final vm = Provider.of<ThresholdsViewModel>(context, listen: false);
@@ -35,8 +34,19 @@ class _ItemListState extends State<ItemList> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(controller.text.trim()), child: const Text('Create')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            style: Theme.of(context).brightness == Brightness.light
+                ? ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).cardColor,
+                    foregroundColor: Theme.of(context).primaryColor,
+                  )
+                : null,
+            child: const Text('Create'),
+          ),
         ],
       ),
     );
@@ -62,7 +72,9 @@ class _ItemListState extends State<ItemList> {
           children: [
             Expanded(
               child: itemKeys.isEmpty
-                  ? Center(child: Text('No items in this category. Tap + to add one.'))
+                  ? Center(
+                      child:
+                          Text('No items in this category. Tap + to add one.'))
                   : ListView.separated(
                       itemCount: itemKeys.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
@@ -70,11 +82,13 @@ class _ItemListState extends State<ItemList> {
                         final item = itemKeys[idx];
                         final subItems = vm.subItemsFor(widget.category, item);
                         final subCount = subItems.length;
-                        final displaySubtitle =
-                            subCount == 1 ? '1 sub-item' : '$subCount sub-items';
+                        final displaySubtitle = subCount == 1
+                            ? '1 sub-item'
+                            : '$subCount sub-items';
 
                         return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 4),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -85,18 +99,22 @@ class _ItemListState extends State<ItemList> {
                                       item,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.titleMedium,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
                                     ),
                                   ),
                                   PopupMenuButton<_ItemMenuAction>(
-                                    color: AppTheme.getHighlightBackground(context),
+                                    color: AppTheme.getHighlightBackground(
+                                        context),
                                     icon: const Icon(Icons.more_vert),
                                     onSelected: (action) async {
                                       switch (action) {
                                         case _ItemMenuAction.rename:
                                           final controller =
                                               TextEditingController(text: item);
-                                          final newName = await showDialog<String?>(
+                                          final newName =
+                                              await showDialog<String?>(
                                             context: context,
                                             builder: (ctx) => AlertDialog(
                                               title: const Text('Rename item'),
@@ -104,17 +122,34 @@ class _ItemListState extends State<ItemList> {
                                                 controller: controller,
                                                 autofocus: true,
                                                 decoration:
-                                                    const InputDecoration(hintText: 'Item name'),
+                                                    const InputDecoration(
+                                                        hintText: 'Item name'),
                                               ),
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.of(ctx).pop(null),
+                                                      Navigator.of(ctx)
+                                                          .pop(null),
                                                   child: const Text('Cancel'),
                                                 ),
                                                 ElevatedButton(
-                                                  onPressed: () => Navigator.of(ctx)
-                                                      .pop(controller.text.trim()),
+                                                  onPressed: () =>
+                                                      Navigator.of(ctx).pop(
+                                                          controller.text
+                                                              .trim()),
+                                                  style: Theme.of(context)
+                                                              .brightness ==
+                                                          Brightness.light
+                                                      ? ElevatedButton
+                                                          .styleFrom(
+                                                          backgroundColor:
+                                                              Theme.of(context)
+                                                                  .cardColor,
+                                                          foregroundColor:
+                                                              Theme.of(context)
+                                                                  .primaryColor,
+                                                        )
+                                                      : null,
                                                   child: const Text('Save'),
                                                 ),
                                               ],
@@ -124,13 +159,16 @@ class _ItemListState extends State<ItemList> {
                                           if (newName != null &&
                                               newName.isNotEmpty &&
                                               newName != item) {
-                                            vm.renameItem(widget.category, item, newName);
-                                            Helpers.showSnackBar('Item renamed');
+                                            vm.renameItem(
+                                                widget.category, item, newName);
+                                            Helpers.showSnackBar(
+                                                'Item renamed');
                                           }
                                           break;
 
                                         case _ItemMenuAction.delete:
-                                          final confirmed = await showDialog<bool?>(
+                                          final confirmed =
+                                              await showDialog<bool?>(
                                             context: context,
                                             builder: (dctx) => AlertDialog(
                                               title: Text('Delete "$item"?'),
@@ -139,12 +177,27 @@ class _ItemListState extends State<ItemList> {
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.of(dctx).pop(false),
+                                                      Navigator.of(dctx)
+                                                          .pop(false),
                                                   child: const Text('Cancel'),
                                                 ),
                                                 ElevatedButton(
                                                   onPressed: () =>
-                                                      Navigator.of(dctx).pop(true),
+                                                      Navigator.of(dctx)
+                                                          .pop(true),
+                                                  style: Theme.of(context)
+                                                              .brightness ==
+                                                          Brightness.light
+                                                      ? ElevatedButton
+                                                          .styleFrom(
+                                                          backgroundColor:
+                                                              Theme.of(context)
+                                                                  .cardColor,
+                                                          foregroundColor:
+                                                              Theme.of(context)
+                                                                  .primaryColor,
+                                                        )
+                                                      : null,
                                                   child: const Text('Delete'),
                                                 ),
                                               ],
@@ -156,20 +209,27 @@ class _ItemListState extends State<ItemList> {
                                               showDialog(
                                                 context: context,
                                                 barrierDismissible: false,
-                                                builder: (_) => const Center(child: CircularProgressIndicator()),
+                                                builder: (_) => const Center(
+                                                    child:
+                                                        CircularProgressIndicator()),
                                               );
                                             }
 
                                             try {
-                                              await vm.deleteItem(widget.category, item);
+                                              await vm.deleteItem(
+                                                  widget.category, item);
                                               if (context.mounted) {
-                                                Navigator.of(context).pop(); // Pop loading
-                                                Helpers.showSnackBar('Item removed');
+                                                Navigator.of(context)
+                                                    .pop(); // Pop loading
+                                                Helpers.showSnackBar(
+                                                    'Item removed');
                                               }
                                             } catch (e) {
                                               if (context.mounted) {
-                                                Navigator.of(context).pop(); // Pop loading
-                                                Helpers.showSnackBar('Error: $e');
+                                                Navigator.of(context)
+                                                    .pop(); // Pop loading
+                                                Helpers.showSnackBar(
+                                                    'Error: $e');
                                               }
                                             }
                                           }
@@ -209,7 +269,8 @@ class _ItemListState extends State<ItemList> {
                                     onPressed: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => ChangeNotifierProvider.value(
+                                          builder: (_) =>
+                                              ChangeNotifierProvider.value(
                                             value: vm,
                                             child: SubItemList(
                                               category: widget.category,
@@ -225,14 +286,18 @@ class _ItemListState extends State<ItemList> {
                                     tooltip: 'Edit weights',
                                     onPressed: () {
                                       // Fix: Prevent weight config if no sub-items
-                                      if (vm.subItemsFor(widget.category, item).isEmpty) {
-                                        Helpers.showSnackBar('Please add sub-items before configuring weights.');
-                                        return;   
+                                      if (vm
+                                          .subItemsFor(widget.category, item)
+                                          .isEmpty) {
+                                        Helpers.showSnackBar(
+                                            'Please add sub-items before configuring weights.');
+                                        return;
                                       }
 
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => ChangeNotifierProvider.value(
+                                          builder: (_) =>
+                                              ChangeNotifierProvider.value(
                                             value: vm,
                                             child: ItemWeightsEditor(
                                               category: widget.category,
@@ -249,45 +314,65 @@ class _ItemListState extends State<ItemList> {
                                     onPressed: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) => ChangeNotifierProvider.value(
+                                          builder: (_) =>
+                                              ChangeNotifierProvider.value(
                                             value: vm,
                                             child: Builder(
                                               builder: (ctx) {
-                                                final watchVm = ctx.watch<ThresholdsViewModel>();
+                                                final watchVm = ctx.watch<
+                                                    ThresholdsViewModel>();
                                                 final mode =
-                                                    watchVm.weightModeFor(widget.category, item);
+                                                    watchVm.weightModeFor(
+                                                        widget.category, item);
                                                 final subItems =
-                                                    watchVm.subItemsFor(widget.category, item);
+                                                    watchVm.subItemsFor(
+                                                        widget.category, item);
 
                                                 // SHARED MODE → single table
                                                 if (mode == WeightMode.shared) {
-                                                  final bySub = watchVm
-                                                      .weightsForItemBySubItem(widget.category, item);
-
-                                                  final shared = watchVm.sharedWeightsForItem(widget.category, item);
-                                                  final sortedShared = [...shared]
-                                                    ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+                                                  final shared = watchVm
+                                                      .sharedWeightsForItem(
+                                                          widget.category,
+                                                          item);
+                                                  final sortedShared = [
+                                                    ...shared
+                                                  ]..sort((a, b) => Helpers
+                                                          .safeNum(a)
+                                                      .compareTo(
+                                                          Helpers.safeNum(b)));
 
                                                   return InventoryTable(
                                                     title: '$item – Thresholds',
                                                     category: widget.category,
                                                     item: item,
-                                                    mode: InventoryTableMode.threshold,
+                                                    mode: InventoryTableMode
+                                                        .threshold,
                                                     subItems: subItems,
                                                     isSharedWeights: true,
-                                                    weightsForSubItem: (_) => sortedShared,
-                                                    getValue: ({required subItem, required weight}) {
-                                                      return watchVm.thresholdFor(
-                                                        category: widget.category,
+                                                    weightsForSubItem: (_) =>
+                                                        sortedShared,
+                                                    getValue: (
+                                                        {required subItem,
+                                                        required weight}) {
+                                                      return watchVm
+                                                          .thresholdFor(
+                                                        category:
+                                                            widget.category,
                                                         item: item,
                                                         subItem: subItem,
                                                         weight: weight,
                                                       );
                                                     },
-                                                    setValue: ({required subItem, required weight, required int? value}) {
-                                                      if (value == null) return Future.value();
+                                                    setValue: (
+                                                        {required subItem,
+                                                        required weight,
+                                                        required int? value}) {
+                                                      if (value == null) {
+                                                        return Future.value();
+                                                      }
                                                       watchVm.setThreshold(
-                                                        category: widget.category,
+                                                        category:
+                                                            widget.category,
                                                         item: item,
                                                         subItem: subItem,
                                                         weight: weight,
@@ -303,15 +388,18 @@ class _ItemListState extends State<ItemList> {
                                                   title: '$item – Thresholds',
                                                   category: widget.category,
                                                   item: item,
-                                                  mode: InventoryTableMode.threshold,
+                                                  mode: InventoryTableMode
+                                                      .threshold,
                                                   subItems: subItems,
                                                   weightsForSubItem: (sub) =>
                                                       watchVm.weightsForSubItem(
-                                                        widget.category,
-                                                        item,
-                                                        sub,
-                                                      ),
-                                                  getValue: ({required subItem, required weight}) {
+                                                    widget.category,
+                                                    item,
+                                                    sub,
+                                                  ),
+                                                  getValue: (
+                                                      {required subItem,
+                                                      required weight}) {
                                                     return watchVm.thresholdFor(
                                                       category: widget.category,
                                                       item: item,
@@ -319,8 +407,13 @@ class _ItemListState extends State<ItemList> {
                                                       weight: weight,
                                                     );
                                                   },
-                                                  setValue: ({required subItem, required weight, required int? value}) {
-                                                    if (value == null) return Future.value();
+                                                  setValue: (
+                                                      {required subItem,
+                                                      required weight,
+                                                      required int? value}) {
+                                                    if (value == null) {
+                                                      return Future.value();
+                                                    }
                                                     watchVm.setThreshold(
                                                       category: widget.category,
                                                       item: item,
@@ -355,6 +448,12 @@ class _ItemListState extends State<ItemList> {
                     onPressed: () => _showCreateItemDialog(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Add item'),
+                    style: Theme.of(context).brightness == Brightness.light
+                        ? ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).cardColor,
+                            foregroundColor: Theme.of(context).primaryColor,
+                          )
+                        : null,
                   ),
                 ),
               ],

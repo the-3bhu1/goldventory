@@ -34,6 +34,12 @@ class SubItemList extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            style: Theme.of(context).brightness == Brightness.light
+                ? ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).cardColor,
+                    foregroundColor: Theme.of(context).primaryColor,
+                  )
+                : null,
             child: const Text('Create'),
           ),
         ],
@@ -71,6 +77,12 @@ class SubItemList extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            style: Theme.of(context).brightness == Brightness.light
+                ? ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).cardColor,
+                    foregroundColor: Theme.of(context).primaryColor,
+                  )
+                : null,
             child: const Text('Rename'),
           ),
         ],
@@ -109,7 +121,8 @@ class SubItemList extends StatelessWidget {
                     width: 40,
                     height: 40,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.image_not_supported),
                   )
                 : null,
             title: Text(s),
@@ -138,6 +151,15 @@ class SubItemList extends StatelessWidget {
                           ),
                           ElevatedButton(
                             onPressed: () => Navigator.of(dctx).pop(true),
+                            style:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            Theme.of(context).cardColor,
+                                        foregroundColor:
+                                            Theme.of(context).primaryColor,
+                                      )
+                                    : null,
                             child: const Text('Delete'),
                           ),
                         ],
@@ -149,13 +171,14 @@ class SubItemList extends StatelessWidget {
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                          builder: (_) =>
+                              const Center(child: CircularProgressIndicator()),
                         );
                       }
 
                       try {
                         await vm.deleteSubItem(category, item, s);
-                         if (context.mounted) {
+                        if (context.mounted) {
                           Navigator.of(context).pop(); // Pop loading
                           Helpers.showSnackBar('Sub-item deleted');
                         }
@@ -176,8 +199,12 @@ class SubItemList extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateSubItemDialog(context, vm),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.light
+            ? Theme.of(context).cardColor
+            : Theme.of(context).primaryColor,
+        foregroundColor: Theme.of(context).brightness == Brightness.light
+            ? Theme.of(context).primaryColor
+            : Colors.white,
         child: const Icon(Icons.add),
       ),
     );

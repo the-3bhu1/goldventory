@@ -62,7 +62,9 @@ class ThresholdsViewModel extends ChangeNotifier {
   void _onGlobalStateChanged() {
     if (_disposed) return;
     // If GlobalState finished loading and we are empty, hydrate.
-    if (!globalState.isLoading && _local.isEmpty && globalState.thresholds.asNestedMap().isNotEmpty) {
+    if (!globalState.isLoading &&
+        _local.isEmpty &&
+        globalState.thresholds.asNestedMap().isNotEmpty) {
       _hydrateFromGlobal();
       notifyListeners();
     }
@@ -74,80 +76,89 @@ class ThresholdsViewModel extends ChangeNotifier {
   /// Load a deep copy of thresholds from global state into local buffer.
   Future<void> load() async {
     developer.log('ThresholdsViewModel.load() STARTED', name: 'ThresholdsVM');
-    
+
     // 1. If _local is already populated, DO NOT RELOAD.
     //    This assumes ThresholdsViewModel is long-lived or we want to preserve edits.
     //    Since we want to fix "Temporary Blankness", we trust the existing _local state.
     if (_local.isNotEmpty) {
-      developer.log('ThresholdsViewModel.load() SKIPPED: _local already populated with ${_local.length} categories.', name: 'ThresholdsVM');
+      developer.log(
+          'ThresholdsViewModel.load() SKIPPED: _local already populated with ${_local.length} categories.',
+          name: 'ThresholdsVM');
       return;
     }
 
     // 2. Always hydrate from in-memory GlobalState first (Fast, Synchronous, Fresh)
     if (globalState.thresholds.asNestedMap().isNotEmpty) {
       _hydrateFromGlobal();
-      developer.log('ThresholdsViewModel.load() hydrated from existing GlobalState', name: 'ThresholdsVM');
+      developer.log(
+          'ThresholdsViewModel.load() hydrated from existing GlobalState',
+          name: 'ThresholdsVM');
     }
 
     // 3. Only fetch from Firestore if GlobalState is empty and not already loading.
-    if (globalState.thresholds.asNestedMap().isEmpty && !globalState.isLoading) {
-       developer.log('ThresholdsViewModel.load() fetching from Firestore...', name: 'ThresholdsVM');
-       Future.microtask(() {
-         globalState.setLoading(true);
-       });
+    if (globalState.thresholds.asNestedMap().isEmpty &&
+        !globalState.isLoading) {
+      developer.log('ThresholdsViewModel.load() fetching from Firestore...',
+          name: 'ThresholdsVM');
+      Future.microtask(() {
+        globalState.setLoading(true);
+      });
 
-       try {
-         await globalState.loadThresholds();
-         _hydrateFromGlobal();
-       } finally {
-         Future.microtask(() {
-           globalState.setLoading(false);
-         });
-         notifyListeners();
-       }
+      try {
+        await globalState.loadThresholds();
+        _hydrateFromGlobal();
+      } finally {
+        Future.microtask(() {
+          globalState.setLoading(false);
+        });
+        notifyListeners();
+      }
     } else {
       notifyListeners();
     }
   }
 
   void _hydrateFromGlobal() {
-      _local.clear();
-      developer.log('ThresholdsViewModel.load() CLEARED _local', name: 'ThresholdsVM');
-      final source = globalState.thresholds.asNestedMap();
+    _local.clear();
+    developer.log('ThresholdsViewModel.load() CLEARED _local',
+        name: 'ThresholdsVM');
+    final source = globalState.thresholds.asNestedMap();
 
-      source.forEach((cat, items) {
-        final Map<String, Map<String, Map<String, int?>>> itemCopy = {};
-        items.forEach((item, subMap) {
-          final Map<String, Map<String, int?>> subCopy = {};
-          subMap.forEach((subItem, weights) {
-            final out = <String, int?>{};
-            weights.forEach((w, v) {
-              out[w.toString()] = v is int ? v : null;
-            });
-                      subCopy[subItem] = out;
+    source.forEach((cat, items) {
+      final Map<String, Map<String, Map<String, int?>>> itemCopy = {};
+      items.forEach((item, subMap) {
+        final Map<String, Map<String, int?>> subCopy = {};
+        subMap.forEach((subItem, weights) {
+          final out = <String, int?>{};
+          weights.forEach((w, v) {
+            out[w.toString()] = v is int ? v : null;
           });
-          itemCopy[item] = subCopy;
+          subCopy[subItem] = out;
         });
-        _local[cat] = itemCopy;
+        itemCopy[item] = subCopy;
       });
-      developer.log('ThresholdsViewModel.load() POPULATED _local with ${_local.length} categories', name: 'ThresholdsVM');
+      _local[cat] = itemCopy;
+    });
+    developer.log(
+        'ThresholdsViewModel.load() POPULATED _local with ${_local.length} categories',
+        name: 'ThresholdsVM');
 
-      // Restore persisted weight modes from GlobalState
-      _weightModes.clear();
-      for (final cat in _local.keys) {
-        final items = _local[cat]!;
-        for (final item in items.keys) {
-          final isShared = globalState.getWeightModeFor(
-            category: cat,
-            item: item,
-          );
-          if (isShared != null) {
-            _weightModes.putIfAbsent(cat, () => {});
-            _weightModes[cat]![item] =
-                isShared ? WeightMode.shared : WeightMode.perSubItem;
-          }
+    // Restore persisted weight modes from GlobalState
+    _weightModes.clear();
+    for (final cat in _local.keys) {
+      final items = _local[cat]!;
+      for (final item in items.keys) {
+        final isShared = globalState.getWeightModeFor(
+          category: cat,
+          item: item,
+        );
+        if (isShared != null) {
+          _weightModes.putIfAbsent(cat, () => {});
+          _weightModes[cat]![item] =
+              isShared ? WeightMode.shared : WeightMode.perSubItem;
         }
       }
+    }
   }
 
   /// Discard local edits and reload from global
@@ -167,7 +178,7 @@ class ThresholdsViewModel extends ChangeNotifier {
   List<String> itemsFor(String category) {
     final m = _local[category];
     if (m == null) return [];
-    
+
     // keys.sort(); // Removed
     // Filter out metadata fields (e.g. __item_order)
     return m.keys.where((k) => !k.startsWith('__')).toList();
@@ -179,7 +190,9 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // Preserve insertion order exactly as stored
     // Filter out metadata fields (e.g. __metadata, __item_order etc) and the special 'shared' key
-    return itemMap.keys.where((k) => k != 'shared' && !k.startsWith('__')).toList();
+    return itemMap.keys
+        .where((k) => k != 'shared' && !k.startsWith('__'))
+        .toList();
   }
 
   /// Explicit settings-only accessor used by weight & threshold flows.
@@ -189,7 +202,8 @@ class ThresholdsViewModel extends ChangeNotifier {
   }
 
   /// Returns weights map for specific subItem. Use subItem = '' for item-level weights.
-  Map<String, int> weightsFor(String category, String item, {required String subItem}) {
+  Map<String, int> weightsFor(String category, String item,
+      {required String subItem}) {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return {};
     final wmap = itemMap[subItem];
@@ -210,9 +224,7 @@ class ThresholdsViewModel extends ChangeNotifier {
     if (isShared) {
       final sharedMap = itemMap['shared'];
       if (sharedMap != null && sharedMap.isNotEmpty) {
-        return sharedMap.keys
-            .map((e) => e.toString())
-            .toList()
+        return sharedMap.keys.map((e) => e.toString()).toList()
           ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
       }
     }
@@ -225,16 +237,17 @@ class ThresholdsViewModel extends ChangeNotifier {
     // 3. Last Fallback: If Shared Mode and we still have nothing, search siblings
     if (isShared && explicitList.isEmpty) {
       for (final otherSub in itemMap.keys) {
-        if (otherSub.startsWith('__') || otherSub == 'shared') continue; 
+        if (otherSub.startsWith('__') || otherSub == 'shared') continue;
         final otherWeights = itemMap[otherSub];
         if (otherWeights != null && otherWeights.isNotEmpty) {
-           return otherWeights.keys.cast<String>().toList()
+          return otherWeights.keys.cast<String>().toList()
             ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
         }
       }
     }
 
-    return explicitList..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+    return explicitList
+      ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
   }
 
   int? thresholdFor({
@@ -258,7 +271,9 @@ class ThresholdsViewModel extends ChangeNotifier {
     );
 
     if (globalVal != null) {
-      developer.log('ThresholdsViewModel.thresholdFor REPAIRED local miss for $subItem/$weight -> $globalVal', name: 'ThresholdsVM');
+      developer.log(
+          'ThresholdsViewModel.thresholdFor REPAIRED local miss for $subItem/$weight -> $globalVal',
+          name: 'ThresholdsVM');
       // Repair local silently
       _ensureCategoryItemSub(category, item, subItem);
       _local[category]![item]![subItem]![weight] = globalVal;
@@ -280,7 +295,6 @@ class ThresholdsViewModel extends ChangeNotifier {
     final list = weights.toList(); // ..sort(); // Removed
     return list;
   }
-
 
   // -----------------
   // Write helpers (local only)
@@ -391,29 +405,25 @@ class ThresholdsViewModel extends ChangeNotifier {
       oldName: oldName,
       newName: newName,
     );
-     
+
     // Update GlobalState (Preserving Order)
     globalState.thresholds.renameCategory(oldName, newName);
-    
+
     // Explicitly rename the Persistence Document via delete-then-create transaction or similar?
     // Firestore doesn't support "rename collection/doc".
     // Since we are changing the ID, we must read-copy-delete.
     // However, `save()` handles writing the new data.
     // We just need to delete the old data.
     // BUT we must also migrate the INVENTORY data.
-    
-    // For Category rename, it's expensive (move all docs). 
+
+    // For Category rename, it's expensive (move all docs).
     // Implementing Inventory Migration for Category is complex.
-    // Given the user report was about SubItems, let's focus on that first, 
+    // Given the user report was about SubItems, let's focus on that first,
     // but at least clean up the old Threshold doc.
-    
+
     final safeOld = _encodeKey(oldName);
     FirebaseFirestore.instance.collection('thresholds').doc(safeOld).delete();
-    
-    
-    // TODO: Migrate Inventory Collection for this category?
-    // This is a heavy operation. Leaving as-is for now unless requested.
-    
+
     unawaited(_commit());
   }
 
@@ -427,7 +437,7 @@ class ThresholdsViewModel extends ChangeNotifier {
       oldName: oldName,
       newName: newName,
     );
-    
+
     // Update GlobalState (Preserving Order)
     globalState.thresholds.renameItem(category, oldName, newName);
 
@@ -435,35 +445,36 @@ class ThresholdsViewModel extends ChangeNotifier {
     // We rely on save() to write the new key.
     final safeCat = _encodeKey(category);
     final safeOld = _encodeKey(oldName);
-    
+
     FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
-        safeOld: FieldValue.delete(),
+      safeOld: FieldValue.delete(),
     });
-    
+
     // Migrate Inventory Data?
     // Inventory structure: doc(cat) -> field(item) -> map(subItem)
     // We should move field(item) -> field(newitem)
     final safeNew = _encodeKey(newName);
-    
-    final docRef = FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+
+    final docRef =
+        FirebaseFirestore.instance.collection('inventory').doc(safeCat);
     FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(docRef);
-        if (!snap.exists) return;
-        final data = snap.data();
-        if (data == null) return;
-        
-        final oldData = data[safeOld];
-        if (oldData != null) {
-            // Write to new key
-            tx.update(docRef, {
-                safeNew: oldData,
-                safeOld: FieldValue.delete(),
-            });
-        }
+      final snap = await tx.get(docRef);
+      if (!snap.exists) return;
+      final data = snap.data();
+      if (data == null) return;
+
+      final oldData = data[safeOld];
+      if (oldData != null) {
+        // Write to new key
+        tx.update(docRef, {
+          safeNew: oldData,
+          safeOld: FieldValue.delete(),
+        });
+      }
     }).catchError((e) {
-        developer.log('Inventory item rename failed: $e', name: 'SettingsVM');
+      developer.log('Inventory item rename failed: $e', name: 'SettingsVM');
     });
-    
+
     unawaited(_commit());
   }
 
@@ -474,7 +485,6 @@ class ThresholdsViewModel extends ChangeNotifier {
     String oldName,
     String newName,
   ) {
-
     final itemMap = _local[category]?[item];
     if (itemMap == null) return;
 
@@ -486,58 +496,59 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // Update GlobalState (Preserving Order)
     globalState.thresholds.renameSubItem(category, item, oldName, newName);
-    
+
     // Firestore Persistence:
     final safeCat = _encodeKey(category);
     final safeItem = _encodeKey(item);
     final safeOld = _encodeKey(oldName);
     final safeNew = _encodeKey(newName);
-    
+
     // 1. Migrate Inventory Data (Crucial to prevent data loss)
     // path: inventory/doc(cat)/item/oldSub -> inventory/doc(cat)/item/newSub
-    
-    final docRef = FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+
+    final docRef =
+        FirebaseFirestore.instance.collection('inventory').doc(safeCat);
     FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(docRef);
-        if (!snap.exists) return; // No inventory to migrate
-        
-        // We need to read the nested map safely
-        // Snapshot data is Map<String, dynamic>
-        // We look for [safeItem][safeOld]
-        final data = snap.data();
-        if (data == null) return;
-        
-        final itemData = data[safeItem];
-        // Must perform safe casting and null checks
-        if (itemData is Map) {
-             final subData = itemData[safeOld];
-             // If we have data for the old sub-item, move it
-             if (subData != null) {
-                 // Construct update map
-                 // We can use dot notation for nested fields in 'update'
-                 // "item.newSub": value
-                 // "item.oldSub": delete
-                 
-                 final fieldPathNew = '$safeItem.$safeNew';
-                 final fieldPathOld = '$safeItem.$safeOld';
-                 
-                 tx.update(docRef, {
-                     fieldPathNew: subData,
-                     fieldPathOld: FieldValue.delete(),
-                 });
-             }
+      final snap = await tx.get(docRef);
+      if (!snap.exists) return; // No inventory to migrate
+
+      // We need to read the nested map safely
+      // Snapshot data is Map<String, dynamic>
+      // We look for [safeItem][safeOld]
+      final data = snap.data();
+      if (data == null) return;
+
+      final itemData = data[safeItem];
+      // Must perform safe casting and null checks
+      if (itemData is Map) {
+        final subData = itemData[safeOld];
+        // If we have data for the old sub-item, move it
+        if (subData != null) {
+          // Construct update map
+          // We can use dot notation for nested fields in 'update'
+          // "item.newSub": value
+          // "item.oldSub": delete
+
+          final fieldPathNew = '$safeItem.$safeNew';
+          final fieldPathOld = '$safeItem.$safeOld';
+
+          tx.update(docRef, {
+            fieldPathNew: subData,
+            fieldPathOld: FieldValue.delete(),
+          });
         }
+      }
     }).catchError((e) {
-        developer.log('Inventory sub-item rename failed: $e', name: 'SettingsVM');
+      developer.log('Inventory sub-item rename failed: $e', name: 'SettingsVM');
     });
-    
+
     // 2. Remove old key from Thresholds Firestore
     // (New key is written by _commit() -> save(), but old key remains unless deleted)
     final fieldPathOld = '$safeItem.$safeOld';
     FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
-        fieldPathOld: FieldValue.delete(),
+      fieldPathOld: FieldValue.delete(),
     });
-    
+
     unawaited(_commit());
   }
 
@@ -558,18 +569,18 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // PRESERVE ORDER: Reconstruct map with new key in valid position
     final keys = parent.keys.toList();
-    
+
     // Create temp map to rebuild
     final newMap = <String, dynamic>{};
     for (int i = 0; i < keys.length; i++) {
-        final key = keys[i];
-        if (key == oldName) {
-            newMap[newName] = existing;
-        } else {
-            newMap[key] = parent[key];
-        }
+      final key = keys[i];
+      if (key == oldName) {
+        newMap[newName] = existing;
+      } else {
+        newMap[key] = parent[key];
+      }
     }
-    
+
     // Replace content of parent map in-place
     parent.clear();
     // Use manual iteration to avoid "not a subtype" error with addAll
@@ -581,7 +592,7 @@ class ThresholdsViewModel extends ChangeNotifier {
     // _commit pushes _local to GlobalState; it does not remove old keys.
     // If we commit before the caller removes the old key from GlobalState, we persist duplicates.
     // The caller MUST handles GlobalState updates and then call unawaited(_commit()).
-    
+
     _dirty = true;
     notifyListeners();
   }
@@ -616,28 +627,30 @@ class ThresholdsViewModel extends ChangeNotifier {
     // If in Shared Mode, the new sub-item should immediately inherit the schema of its siblings.
     final mode = weightModeFor(category, item);
     if (mode == WeightMode.shared) {
-       final itemMap = _local[category]?[item];
-       if (itemMap != null) {
-          // Find a donor
-          Map<String, int?>? donorWeights;
-          for (final otherSub in itemMap.keys) {
-             if (otherSub == subItem) continue; // skip self
-             if (otherSub.startsWith('__')) continue;
-             if (itemMap[otherSub]?.isNotEmpty ?? false) {
-                donorWeights = itemMap[otherSub];
-                break;
-             }
+      final itemMap = _local[category]?[item];
+      if (itemMap != null) {
+        // Find a donor
+        Map<String, int?>? donorWeights;
+        for (final otherSub in itemMap.keys) {
+          if (otherSub == subItem) continue; // skip self
+          if (otherSub.startsWith('__')) continue;
+          if (itemMap[otherSub]?.isNotEmpty ?? false) {
+            donorWeights = itemMap[otherSub];
+            break;
           }
+        }
 
-          if (donorWeights != null) {
-             // Copy structure (values initialized to null)
-             _local[category]![item]![subItem] = {}; // ensure clean start
-             for (final w in donorWeights.keys) {
-                _local[category]![item]![subItem]![w] = null;
-             }
-             developer.log('createSubItem: Auto-copied ${donorWeights.length} shared weights to $subItem', name: 'SettingsVM');
+        if (donorWeights != null) {
+          // Copy structure (values initialized to null)
+          _local[category]![item]![subItem] = {}; // ensure clean start
+          for (final w in donorWeights.keys) {
+            _local[category]![item]![subItem]![w] = null;
           }
-       }
+          developer.log(
+              'createSubItem: Auto-copied ${donorWeights.length} shared weights to $subItem',
+              name: 'SettingsVM');
+        }
+      }
     }
 
     // Force immediate availability for threshold UI
@@ -657,7 +670,7 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // 3. Remove from Global State (prevent resurrection)
     globalState.thresholds.asNestedMap()[category]?.remove(item);
-    
+
     // Check if category is now empty in GlobalState
     if (globalState.thresholds.asNestedMap()[category]?.isEmpty ?? false) {
       globalState.thresholds.asNestedMap().remove(category);
@@ -680,7 +693,8 @@ class ThresholdsViewModel extends ChangeNotifier {
   }
 
   /// Remove only a subItem under an item
-  Future<void> deleteSubItem(String category, String item, String subItem) async {
+  Future<void> deleteSubItem(
+      String category, String item, String subItem) async {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return;
 
@@ -690,7 +704,7 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // 2. Remove from Local State
     itemMap.remove(subItem);
-    
+
     // 3. Remove from Global State (CRITICAL: Must happen BEFORE _commit/save to prevent resurrection)
     final globalItemMap = globalState.thresholds.asNestedMap()[category]?[item];
     if (globalItemMap != null) {
@@ -698,10 +712,10 @@ class ThresholdsViewModel extends ChangeNotifier {
       // Clean up parent if empty
       if (globalItemMap.isEmpty) {
         globalState.thresholds.asNestedMap()[category]?.remove(item);
-        
+
         // Clean up category if empty
         if (globalState.thresholds.asNestedMap()[category]?.isEmpty ?? false) {
-           globalState.thresholds.asNestedMap().remove(category);
+          globalState.thresholds.asNestedMap().remove(category);
         }
       }
     }
@@ -716,13 +730,12 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     _dirty = true;
     notifyListeners();
-    
+
     // 5. Persist the *removal* from structure to GlobalState persistence
-    // Since we manually deleted from Firestore above via Repository, 
+    // Since we manually deleted from Firestore above via Repository,
     // we use _commit() to sync the *absence* of the key in the in-memory GlobalState.
     unawaited(_commit());
   }
-
 
   /// Set weights for a specific subItem under an item.
   /// This is used when WeightMode == perSubItem.
@@ -770,26 +783,23 @@ class ThresholdsViewModel extends ChangeNotifier {
   List<String> sharedWeightsForItem(String category, String item) {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return [];
-    
+
     final shared = itemMap['shared'];
     if (shared == null) return [];
 
-    return shared.keys
-        .map((e) => e.toString())
-        .toList();
+    return shared.keys.map((e) => e.toString()).toList();
   }
 
-  Map<String, List<String>> weightsForItemBySubItem(String category, String item) {
+  Map<String, List<String>> weightsForItemBySubItem(
+      String category, String item) {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return {};
 
     final result = <String, List<String>>{};
 
     itemMap.forEach((subItem, weights) {
-      final list = weights.keys
-          .map((e) => e.toString())
-          .toList();
-        /*
+      final list = weights.keys.map((e) => e.toString()).toList();
+      /*
         ..sort((a, b) {
           final ia = int.tryParse(a);
           final ib = int.tryParse(b);
@@ -800,7 +810,7 @@ class ThresholdsViewModel extends ChangeNotifier {
 
       // IMPORTANT: even empty maps are VALID
       result[subItem] = list;
-        });
+    });
 
     return result;
   }
@@ -808,7 +818,8 @@ class ThresholdsViewModel extends ChangeNotifier {
   // -----------------
   // Validation helpers
   // -----------------
-  bool isValidThresholdValue(String value) => int.tryParse(value.trim()) != null;
+  bool isValidThresholdValue(String value) =>
+      int.tryParse(value.trim()) != null;
 
   // -----------------
   // Commit (save)
@@ -887,6 +898,4 @@ class ThresholdsViewModel extends ChangeNotifier {
     if (_disposed) return;
     notifyListeners();
   }
-
-
 }

@@ -35,8 +35,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
       raw.trim().replaceAll('.', '_').replaceAll('/', '_');
 
   String _encodeWeightKey(String subItem, String weight) {
-    final safeSub =
-    subItem.isEmpty ? '__shared__' : _encodeKey(subItem);
+    final safeSub = subItem.isEmpty ? '__shared__' : _encodeKey(subItem);
     final safeWeight = _encodeKey(weight);
     return '$safeSub|$safeWeight';
   }
@@ -47,7 +46,9 @@ class _ReorderScreenState extends State<ReorderScreen> {
   void initState() {
     super.initState();
     final globalState = Provider.of<GlobalState>(context, listen: false);
-    _reorderStream = InventorySnapshotService(thresholdService: globalState.thresholds).streamReorderRows();
+    _reorderStream =
+        InventorySnapshotService(thresholdService: globalState.thresholds)
+            .streamReorderRows();
   }
 
   @override
@@ -62,7 +63,9 @@ class _ReorderScreenState extends State<ReorderScreen> {
         actions: [
           IconButton(
             tooltip: 'Pending Orders',
-            color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
+            color: Theme.of(context).brightness == Brightness.light
+                ? Colors.black
+                : Colors.white,
             icon: const Icon(Icons.receipt_long),
             onPressed: () {
               Navigator.of(context).pushNamed(AppRoutes.orders);
@@ -79,8 +82,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   height: 60,
                   decoration: BoxDecoration(
-                     color: AppColors.shimmerBase(context),
-                     borderRadius: BorderRadius.circular(12),
+                    color: AppColors.shimmerBase(context),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               )
@@ -94,81 +97,94 @@ class _ReorderScreenState extends State<ReorderScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         height: 60,
                         decoration: BoxDecoration(
-                           color: AppColors.shimmerBase(context),
-                           borderRadius: BorderRadius.circular(12),
+                          color: AppColors.shimmerBase(context),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     );
                   }
 
-            final rows = snapshot.data ?? [];
-            if (rows.isEmpty) {
-              return const Center(child: Text('All stock levels are healthy!'));
-            }
+                  final rows = snapshot.data ?? [];
+                  if (rows.isEmpty) {
+                    return const Center(
+                        child: Text('All stock levels are healthy!'));
+                  }
 
-            final Map<String, List<ReorderRow>> grouped = {};
-            for (final r in rows) {
-              final key = '${r.category}|${r.item}';
-              grouped.putIfAbsent(key, () => []).add(r);
-            }
+                  final Map<String, List<ReorderRow>> grouped = {};
+                  for (final r in rows) {
+                    final key = '${r.category}|${r.item}';
+                    grouped.putIfAbsent(key, () => []).add(r);
+                  }
 
-            return ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              children: grouped.entries.map((entry) {
-                final rowsForItem = entry.value;
-                final title = rowsForItem.first.item;
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    children: grouped.entries.map((entry) {
+                      final rowsForItem = entry.value;
+                      final title = rowsForItem.first.item;
 
-                return Card(
-                  color: AppColors.inventoryCardBackground(context),
-                  child: ExpansionTile(
-                    key: ValueKey(entry.key),
-                    maintainState: true,
-                    title: Text(title),
-                    backgroundColor: AppTheme.getHighlightBackground(context),
-                    children: [
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columns: const [
-                            DataColumn(label: Text('Select')),
-                            DataColumn(label: Text('Sub Item')),
-                            DataColumn(label: Text('Weight')),
-                            DataColumn(label: Text('To Order')),
-                            DataColumn(label: Text('Pending')),
+                      return Card(
+                        color: AppColors.inventoryCardBackground(context),
+                        child: ExpansionTile(
+                          key: ValueKey(entry.key),
+                          maintainState: true,
+                          title: Text(title),
+                          backgroundColor:
+                              AppTheme.getHighlightBackground(context),
+                          children: [
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                columns: const [
+                                  DataColumn(label: Text('Select')),
+                                  DataColumn(label: Text('Sub Item')),
+                                  DataColumn(label: Text('Weight')),
+                                  DataColumn(label: Text('To Order')),
+                                  DataColumn(label: Text('Pending')),
+                                ],
+                                rows: rowsForItem.map((r) {
+                                  final rowKey =
+                                      '${r.category}|${r.item}|${r.subItem}|${r.weight}';
+                                  _selected.putIfAbsent(rowKey, () => false);
+
+                                  final isOrderable = r.toOrder > 0;
+
+                                  return DataRow(cells: [
+                                    DataCell(Checkbox(
+                                      value: _selected[rowKey],
+                                      onChanged: isOrderable
+                                          ? (v) => setState(() =>
+                                              _selected[rowKey] = v ?? false)
+                                          : null,
+                                    )),
+                                    DataCell(
+                                        Text(r.subItem.replaceAll('_', ' '))),
+                                    DataCell(Text('${r.weight} g')),
+                                    DataCell(Text(r.toOrder > 0
+                                        ? r.toOrder.toString()
+                                        : '')),
+                                    DataCell(Text(r.pending > 0
+                                        ? r.pending.toString()
+                                        : '')),
+                                  ]);
+                                }).toList(),
+                              ),
+                            ),
                           ],
-                          rows: rowsForItem.map((r) {
-                            final rowKey = '${r.category}|${r.item}|${r.subItem}|${r.weight}';
-                            _selected.putIfAbsent(rowKey, () => false);
-
-                            final isOrderable = r.toOrder > 0;
-
-                            return DataRow(cells: [
-                              DataCell(Checkbox(
-                                value: _selected[rowKey],
-                                onChanged: isOrderable 
-                                    ? (v) => setState(() => _selected[rowKey] = v ?? false)
-                                    : null,
-                              )),
-                              DataCell(Text(r.subItem.replaceAll('_', ' '))),
-                              DataCell(Text('${r.weight} g')),
-                              DataCell(Text(r.toOrder > 0 ? r.toOrder.toString() : '')),
-                              DataCell(Text(r.pending > 0 ? r.pending.toString() : '')),
-                            ]);
-                          }).toList(),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            );
-          },
-        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        backgroundColor: Theme.of(context).brightness == Brightness.light
+            ? Theme.of(context).cardColor
+            : Theme.of(context).primaryColor,
+        foregroundColor: Theme.of(context).brightness == Brightness.light
+            ? Theme.of(context).primaryColor
+            : Theme.of(context).colorScheme.onPrimary,
         onPressed: () async {
           // Build PDF only from rows the user has checked
           // Use snapshot rows and _selected to build selectedRows
@@ -177,7 +193,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
           // Need to get the latest rows from the snapshot service
           final globalState = Provider.of<GlobalState>(context, listen: false);
           final thresholdService = globalState.thresholds;
-          final snapshotService = InventorySnapshotService(thresholdService: thresholdService);
+          final snapshotService =
+              InventorySnapshotService(thresholdService: thresholdService);
           final rows = await snapshotService.streamReorderRows().first;
 
           for (final entry in _selected.entries) {
@@ -192,7 +209,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
             final weight = parts[3];
 
             final row = rows.firstWhere(
-              (r) => r.category == category &&
+              (r) =>
+                  r.category == category &&
                   r.item == item &&
                   r.subItem == subItem &&
                   r.weight == weight,
@@ -216,17 +234,21 @@ class _ReorderScreenState extends State<ReorderScreen> {
           }
 
           // Create order in Firestore using snapshot-based payload
-          final orderItems = selectedRows.map((r) => {
-            'productId': r['category'], // IMPORTANT: productId IS the category name in this app structure
-            'category': r['category'],
-            'item': r['item'],
-            'subItem': r['subItem'],
-            'weight': r['weight'],
-            'weightKey': r['weightKey'],
-            'qtyOrdered': r['toOrder'],
-          }).toList();
+          final orderItems = selectedRows
+              .map((r) => {
+                    'productId': r[
+                        'category'], // IMPORTANT: productId IS the category name in this app structure
+                    'category': r['category'],
+                    'item': r['item'],
+                    'subItem': r['subItem'],
+                    'weight': r['weight'],
+                    'weightKey': r['weightKey'],
+                    'qtyOrdered': r['toOrder'],
+                  })
+              .toList();
 
-          final orderDoc = await FirebaseFirestore.instance.collection('orders').add({
+          final orderDoc =
+              await FirebaseFirestore.instance.collection('orders').add({
             'status': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
             'items': orderItems,
@@ -284,30 +306,39 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   ),
                   pw.SizedBox(height: 16),
 
-          // group rows by category|item
-          for (var groupKey in selectedRows.map((e) => '${e['category']}|${e['item']}').toSet())
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  groupKey.split('|')[1].replaceAll('_', ' ').toUpperCase(),
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 6),
-                pw.TableHelper.fromTextArray(
-                  headers: ['Sub Item', 'Weight', 'To Order'],
-                  data: selectedRows
-                      .where((r) => '${r['category']}|${r['item']}' == groupKey)
-                      .map((r) => [
-                        r['subItem'].toString().replaceAll('_', ' '),
-                        r['weight'].toString(),
-                        r['toOrder'].toString(),
-                      ])
-                      .toList(),
-                ),
-                pw.SizedBox(height: 20),
-              ],
-            ),
+                  // group rows by category|item
+                  for (var groupKey in selectedRows
+                      .map((e) => '${e['category']}|${e['item']}')
+                      .toSet())
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          groupKey
+                              .split('|')[1]
+                              .replaceAll('_', ' ')
+                              .toUpperCase(),
+                          style: pw.TextStyle(
+                              fontSize: 18, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.TableHelper.fromTextArray(
+                          headers: ['Sub Item', 'Weight', 'To Order'],
+                          data: selectedRows
+                              .where((r) =>
+                                  '${r['category']}|${r['item']}' == groupKey)
+                              .map((r) => [
+                                    r['subItem']
+                                        .toString()
+                                        .replaceAll('_', ' '),
+                                    r['weight'].toString(),
+                                    r['toOrder'].toString(),
+                                  ])
+                              .toList(),
+                        ),
+                        pw.SizedBox(height: 20),
+                      ],
+                    ),
                 ];
               },
             ),

@@ -14,10 +14,17 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFFF0F9F8),
       foregroundColor: Color(0xFF003D33),
+      elevation: 0,
+      shape: Border(
+        bottom: BorderSide(
+          color: Color(0xFFB8E0D2),
+          width: 1,
+        ),
+      ),
     ),
     scaffoldBackgroundColor: const Color(0xFFF0F9F8),
     cardColor: const Color(0xFFCEEDE4), // Light Teal for Cards
-    dividerColor: const Color(0xFFD1EBE8),
+    dividerColor: const Color(0xFFB8E0D2),
     highlightColor: const Color(0xFFB3E0DB),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: Color(0xFF003D33),
@@ -61,6 +68,10 @@ class AppTheme {
       textColor: Colors.black,
       collapsedTextColor: Colors.black,
     ),
+    snackBarTheme: const SnackBarThemeData(
+      backgroundColor: Color(0xFFB8E0D2),
+      contentTextStyle: TextStyle(color: Colors.black),
+    ),
   );
 
   static Color getHighlightBackground(BuildContext context) {
@@ -78,6 +89,7 @@ class AppTheme {
       primary: const Color(0xFF00A28E),
       onPrimary: Colors.white,
       brightness: Brightness.dark,
+      error: const Color(0xFFD32F2F), // Darker Red for errors
     ).copyWith(
       secondary: const Color(0xFF00A28E),
       onSecondary: Colors.white,
@@ -85,6 +97,13 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF111717),
       foregroundColor: Colors.white,
+      elevation: 0,
+      shape: Border(
+        bottom: BorderSide(
+          color: Color(0xFF2D3838),
+          width: 1,
+        ),
+      ),
     ),
     scaffoldBackgroundColor: const Color(0xFF111717),
     cardColor: const Color(0xFF232D2D), // Deep Slate/Teal Card
@@ -112,6 +131,13 @@ class AppTheme {
       focusedBorder: UnderlineInputBorder(
         borderSide: BorderSide(color: Colors.white),
       ),
+      errorStyle: TextStyle(color: Color(0xFFD32F2F)),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFD32F2F)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFD32F2F), width: 2),
+      ),
     ),
     textSelectionTheme: const TextSelectionThemeData(
       cursorColor: Colors.white,
@@ -132,14 +158,36 @@ class AppTheme {
       textColor: Colors.white,
       collapsedTextColor: Colors.white,
     ),
+    snackBarTheme: const SnackBarThemeData(
+      backgroundColor: Color(0xFF2D3838),
+      contentTextStyle: TextStyle(color: Colors.white),
+    ),
   );
 }
 
 class AppColors {
-  static Color inventoryCardBackground(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFCEEDE4) : const Color(0xFF232D2D);
-  static Color shimmerBase(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFD1EBE8) : const Color(0xFF1E2626);
-  static Color shimmerHighlight(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0F9F8) : const Color(0xFF2D3838);
-  static Color surfaceVariant(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0F9F8) : const Color(0xFF1E2626);
-  static Color borderGrey(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFFD1EBE8) : const Color(0xFF2D3838);
-  static Color textGrey(BuildContext context) => Theme.of(context).brightness == Brightness.light ? const Color(0xFF003D33).withOpacity(0.7) : Colors.grey.shade400;
+  static Color inventoryCardBackground(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFFCEEDE4)
+          : const Color(0xFF232D2D);
+  static Color shimmerBase(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFFD1EBE8)
+          : const Color(0xFF1E2626);
+  static Color shimmerHighlight(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFFF0F9F8)
+          : const Color(0xFF2D3838);
+  static Color surfaceVariant(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFFF0F9F8)
+          : const Color(0xFF1E2626);
+  static Color borderGrey(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFFB8E0D2)
+          : const Color(0xFF2D3838);
+  static Color textGrey(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF003D33).withValues(alpha: 0.7)
+          : Colors.grey.shade400;
 }

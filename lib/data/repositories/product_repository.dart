@@ -29,17 +29,15 @@ class ProductRepository {
   final CollectionReference _db =
       FirebaseFirestore.instance.collection('inventory');
 
-  String _decodeKey(String encoded) =>
-      encoded.replaceAll('_', '.');
+  String _decodeKey(String encoded) => encoded.replaceAll('_', '.');
 
   String _encodeKey(String raw) =>
       raw.trim().replaceAll('.', '_').replaceAll('/', '_');
 
   Future<void> addProduct(ProductModel product) async {
     try {
-      final safeId = _encodeKey(product.id.isNotEmpty
-          ? product.id
-          : product.name);
+      final safeId =
+          _encodeKey(product.id.isNotEmpty ? product.id : product.name);
 
       if (safeId.isEmpty) {
         throw Exception('Invalid product id/name');
@@ -48,7 +46,8 @@ class ProductRepository {
       final raw = product.toMap();
       final sanitizedRaw = _sanitizeNestedMap(raw);
       if (sanitizedRaw.isEmpty) {
-        throw Exception('Sanitized product map is empty for product ${product.name}');
+        throw Exception(
+            'Sanitized product map is empty for product ${product.name}');
       }
 
       await _db.doc(safeId).set(sanitizedRaw, SetOptions(merge: true));
@@ -93,7 +92,8 @@ class ProductRepository {
     return getProducts().map((products) {
       const int defaultThreshold = 5;
       final lowStock = products.where((product) {
-        return product.weights.entries.any((entry) => entry.value < defaultThreshold);
+        return product.weights.entries
+            .any((entry) => entry.value < defaultThreshold);
       }).toList();
       return lowStock;
     });
@@ -104,9 +104,8 @@ class ProductRepository {
   Future<Map<String, int>> computePendingForProduct(String productId) async {
     final ordersCol = FirebaseFirestore.instance.collection('orders');
     // Query pending / partial orders
-    final q = await ordersCol
-        .where('status', whereIn: ['pending', 'partial'])
-        .get();
+    final q =
+        await ordersCol.where('status', whereIn: ['pending', 'partial']).get();
 
     final Map<String, int> pending = {};
 
@@ -117,8 +116,7 @@ class ProductRepository {
         if (item['productId'] != productId) continue;
         final encoded = item['weightKey'] as String;
         final parts = encoded.split('|');
-        final subItem =
-        parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
+        final subItem = parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
         final weight = _decodeKey(parts[1]);
         final weightKey = '$subItem|$weight';
         final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
@@ -139,9 +137,8 @@ class ProductRepository {
     if (productIds.isEmpty) return {};
     final ordersCol = FirebaseFirestore.instance.collection('orders');
     // Fetch all pending/partial orders
-    final q = await ordersCol
-        .where('status', whereIn: ['pending', 'partial'])
-        .get();
+    final q =
+        await ordersCol.where('status', whereIn: ['pending', 'partial']).get();
 
     final Map<String, Map<String, int>> result = {};
 
@@ -155,11 +152,12 @@ class ProductRepository {
       final items = List<Map<String, dynamic>>.from(orderData['items'] ?? []);
       for (final item in items) {
         final pid = item['productId'] as String? ?? '';
-        if (!result.containsKey(pid)) continue; // skip products we don't care about
+        if (!result.containsKey(pid)) {
+          continue; // skip products we don't care about
+        }
         final encoded = item['weightKey'] as String;
         final parts = encoded.split('|');
-        final subItem =
-        parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
+        final subItem = parts[0] == 'shared' ? '' : _decodeKey(parts[0]);
         final weight = _decodeKey(parts[1]);
         final weightKey = '$subItem|$weight';
         final qtyOrdered = (item['qtyOrdered'] ?? 0) as int;
@@ -177,8 +175,7 @@ class ProductRepository {
   /// Receive shipment items grouped by order. Each item map should contain:
   /// { 'orderId': String, 'productId': String, 'weightKey': String, 'qtyReceivedNow': int }
   /// This runs a transaction per order and updates products, order items and audit events.
-  Future<void> receiveShipment(
-      List<Map<String, dynamic>> receivedItems) async {
+  Future<void> receiveShipment(List<Map<String, dynamic>> receivedItems) async {
     final db = FirebaseFirestore.instance;
 
     // Group items by orderId to combine updates into one transaction per order
@@ -201,7 +198,7 @@ class ProductRepository {
 
         final orderData = orderSnap.data() as Map<String, dynamic>;
         final List<Map<String, dynamic>> orderItems =
-        List<Map<String, dynamic>>.from(orderData['items'] ?? []);
+            List<Map<String, dynamic>>.from(orderData['items'] ?? []);
 
         // Read all product docs we will need
         final Map<String, DocumentReference> productRefs = {};
@@ -228,7 +225,8 @@ class ProductRepository {
           final idx = orderItems.indexWhere((it) =>
               it['productId'] == prodIdRaw && it['weightKey'] == weightKey);
           if (idx == -1) {
-            throw Exception('Order $orderId does not contain item $prodIdRaw/$weightKey');
+            throw Exception(
+                'Order $orderId does not contain item $prodIdRaw/$weightKey');
           }
 
           final item = Map<String, dynamic>.from(orderItems[idx]);
@@ -250,10 +248,11 @@ class ProductRepository {
           // `item` here is the Order Item map, which contains 'item' (the Item Name)
           // `prodData` is the Category document data
           final prodSnap = productSnaps[prodId]!;
-          final prodData = prodSnap.exists 
-              ? Map<String, dynamic>.from(prodSnap.data() as Map<String, dynamic>)
+          final prodData = prodSnap.exists
+              ? Map<String, dynamic>.from(
+                  prodSnap.data() as Map<String, dynamic>)
               : <String, dynamic>{};
-          
+
           final itemName = item['item'] as String;
           final safeItemName = _encodeKey(itemName);
 
@@ -269,19 +268,21 @@ class ProductRepository {
           }
 
           // Traverse: Category -> Item -> SubItem -> Weight
-          final itemMap = Map<String, dynamic>.from(prodData[safeItemName] ?? {});
+          final itemMap =
+              Map<String, dynamic>.from(prodData[safeItemName] ?? {});
           final typeMap = Map<String, dynamic>.from(itemMap[type] ?? {});
           final prevQty = (typeMap[nestedKey] ?? 0) as int;
           final newQty = prevQty + acceptedReceive;
 
           final productRef = _db.doc(prodId);
-          tx.set(productRef, {
-            '$safeItemName': {
-              '$type': {
-                '$nestedKey': newQty
-              }
-            }
-          }, SetOptions(merge: true));
+          tx.set(
+              productRef,
+              {
+                safeItemName: {
+                  type: {nestedKey: newQty}
+                }
+              },
+              SetOptions(merge: true));
 
           // audit event
           final auditRef = productRef.collection('events').doc();
@@ -294,8 +295,8 @@ class ProductRepository {
           });
         }
 
-        final allReceived = orderItems.every((it) =>
-        (it['qtyReceived'] ?? 0) >= (it['qtyOrdered'] ?? 0));
+        final allReceived = orderItems
+            .every((it) => (it['qtyReceived'] ?? 0) >= (it['qtyOrdered'] ?? 0));
         final newStatus = allReceived ? 'received' : 'partial';
 
         tx.update(orderRef, {
@@ -332,11 +333,14 @@ class ProductRepository {
       for (final it in items) {
         if (remaining <= 0) break;
         final pid = it['productId'] as String? ?? '';
-        final itemVal = it['item'] as String? ?? ''; // Matches 'item' in order structure
+        final itemVal =
+            it['item'] as String? ?? ''; // Matches 'item' in order structure
         final wk = it['weightKey'] as String? ?? '';
-        
+
         // Strict matching: ProductID (Category), Item Name, and WeightKey must match
-        if (pid != productId || itemVal != itemName || wk != weightKey) continue;
+        if (pid != productId || itemVal != itemName || wk != weightKey) {
+          continue;
+        }
 
         final qtyOrdered = (it['qtyOrdered'] ?? 0) as int;
         final qtyReceived = (it['qtyReceived'] ?? 0) as int;
@@ -366,14 +370,15 @@ class ProductRepository {
       await FirebaseFirestore.instance.runTransaction((tx) async {
         final snap = await tx.get(productRef);
         // Treat missing doc as empty (it will be created by set-merge)
-        final prodData = snap.exists 
-            ? Map<String, dynamic>.from(snap.data() as Map<String, dynamic>) 
+        final prodData = snap.exists
+            ? Map<String, dynamic>.from(snap.data() as Map<String, dynamic>)
             : <String, dynamic>{};
-        
+
         final safeItemName = _encodeKey(itemName);
 
         // determine nested type/key from weightKey
-        String type; String nestedKey;
+        String type;
+        String nestedKey;
         if (weightKey.contains('|')) {
           final parts = weightKey.split('|');
           type = _encodeKey(parts[0]);
@@ -388,13 +393,14 @@ class ProductRepository {
         final prevQty = (typeMap[nestedKey] ?? 0) as int;
         final newQty = prevQty + remaining;
 
-        tx.set(productRef, {
-          '$safeItemName': {
-            '$type': {
-              '$nestedKey': newQty
-            }
-          }
-        }, SetOptions(merge: true));
+        tx.set(
+            productRef,
+            {
+              safeItemName: {
+                type: {nestedKey: newQty}
+              }
+            },
+            SetOptions(merge: true));
 
         // audit event
         final auditRef = productRef.collection('events').doc();
@@ -417,7 +423,9 @@ class ProductRepository {
   /// { productId: string, productName: string, weightKey: string, qtyOrdered: int }
   /// Returns the created orderId.
   Future<String> createOrder(List<Map<String, dynamic>> items,
-      {String? supplierId, DateTime? expectedDelivery, String? createdBy}) async {
+      {String? supplierId,
+      DateTime? expectedDelivery,
+      String? createdBy}) async {
     try {
       final orders = FirebaseFirestore.instance.collection('orders');
       final now = DateTime.now().toLocal();
@@ -428,8 +436,9 @@ class ProductRepository {
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'orderName': orderName,
-        'expectedDelivery':
-            expectedDelivery == null ? null : Timestamp.fromDate(expectedDelivery),
+        'expectedDelivery': expectedDelivery == null
+            ? null
+            : Timestamp.fromDate(expectedDelivery),
         'supplierId': supplierId,
         'createdBy': createdBy,
         'items': items
@@ -462,8 +471,10 @@ class ProductRepository {
       }
 
       // If caller provided a flat 'weights' map, expand into nested maps
-      if (data.containsKey('weights') && data['weights'] is Map<String, dynamic>) {
-        final weightsMap = Map<String, dynamic>.from(data['weights'] as Map<String, dynamic>);
+      if (data.containsKey('weights') &&
+          data['weights'] is Map<String, dynamic>) {
+        final weightsMap =
+            Map<String, dynamic>.from(data['weights'] as Map<String, dynamic>);
         for (final entry in weightsMap.entries) {
           final flatKey = entry.key; // expected format: 'type|weightKey'
           final val = entry.value;
@@ -472,7 +483,8 @@ class ProductRepository {
             final type = parts[0];
             final nestedKey = parts.sublist(1).join('|');
             processed.putIfAbsent(type, () => <String, dynamic>{});
-            final nested = Map<String, dynamic>.from(processed[type] as Map<String, dynamic>);
+            final nested = Map<String, dynamic>.from(
+                processed[type] as Map<String, dynamic>);
             nested[nestedKey] = val;
             processed[type] = nested;
           }
@@ -481,11 +493,17 @@ class ProductRepository {
 
       // Also copy any nested maps provided directly by the caller
       for (final key in data.keys) {
-        if (key == 'weights' || key == 'id' || key == 'name' || key == 'threshold') continue;
+        if (key == 'weights' ||
+            key == 'id' ||
+            key == 'name' ||
+            key == 'threshold') {
+          continue;
+        }
         final candidate = data[key];
         if (candidate is Map<String, dynamic>) {
           processed.putIfAbsent(key, () => <String, dynamic>{});
-          final nested = Map<String, dynamic>.from(processed[key] as Map<String, dynamic>);
+          final nested =
+              Map<String, dynamic>.from(processed[key] as Map<String, dynamic>);
           for (final wk in candidate.entries) {
             nested[wk.key] = wk.value;
           }
@@ -515,7 +533,6 @@ class ProductRepository {
   /// This avoids field-path ambiguity and race conditions.
   Future<void> updateWeightQuantityTransaction(
       String id, String weightKey, int newQuantity) async {
-
     final safeId = _encodeKey(id);
     final docRef = _db.doc(safeId);
 
@@ -623,13 +640,15 @@ class ProductRepository {
   /// 1. Remove subItem key from Inventory nested map
   /// 2. Remove subItem key from Thresholds nested map
   /// 3. Remove items from Pending Orders matching category, item & subItem identifier
-  Future<void> deleteSubItemCascade(String category, String item, String subItem) async {
+  Future<void> deleteSubItemCascade(
+      String category, String item, String subItem) async {
     final safeCat = _encodeKey(category);
     final safeItem = _encodeKey(item);
     final safeSub = _encodeKey(subItem);
     final db = FirebaseFirestore.instance;
 
-    print('Starting cascade delete for subitem: $category -> $item -> $subItem');
+    print(
+        'Starting cascade delete for subitem: $category -> $item -> $subItem');
 
     // 1. Inventory: Remove nested key item.subItem
     // Firestore dot notation allows updating nested fields
@@ -658,7 +677,7 @@ class ProductRepository {
     await _cleanupOrders((orderItem) {
       if (orderItem['productId'] != category) return false;
       if (orderItem['item'] != item) return false;
-      
+
       final weightKey = orderItem['weightKey'] as String? ?? '';
       // weightKey format is usually "SubItem|Weight"
       // We check if it starts with encoded SubItem
@@ -668,13 +687,13 @@ class ProductRepository {
   }
 
   /// Helper to scan and clean pending orders based on a predicate
-  Future<void> _cleanupOrders(bool Function(Map<String, dynamic>) shouldRemove) async {
+  Future<void> _cleanupOrders(
+      bool Function(Map<String, dynamic>) shouldRemove) async {
     final db = FirebaseFirestore.instance;
     try {
       final ordersSnap = await db
           .collection('orders')
-          .where('status', whereIn: ['pending', 'partial'])
-          .get();
+          .where('status', whereIn: ['pending', 'partial']).get();
 
       int deletedOrders = 0;
       int updatedOrders = 0;
@@ -682,10 +701,10 @@ class ProductRepository {
       for (final doc in ordersSnap.docs) {
         final data = doc.data();
         final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
-        
+
         final initialCount = items.length;
         items.removeWhere(shouldRemove);
-        
+
         if (items.length != initialCount) {
           if (items.isEmpty) {
             await doc.reference.delete();
@@ -699,7 +718,8 @@ class ProductRepository {
           }
         }
       }
-      print('Order cleanup finished: Deleted $deletedOrders empty orders, Updated $updatedOrders orders.');
+      print(
+          'Order cleanup finished: Deleted $deletedOrders empty orders, Updated $updatedOrders orders.');
     } catch (e) {
       print('Error cleaning up orders: $e');
     }

@@ -65,7 +65,8 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
         _orderItemsIndexed[i] = it;
         _maxAllowed[i] = remaining;
         // prefill the receive-now field with remaining (0 if none)
-        _controllers[i] = TextEditingController(text: remaining > 0 ? remaining.toString() : '0');
+        _controllers[i] = TextEditingController(
+            text: remaining > 0 ? remaining.toString() : '0');
       }
 
       setState(() {
@@ -75,7 +76,9 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     }, onError: (e) {
       if (!mounted) return;
       Helpers.showSnackBar('Failed to load order: $e');
-      setState(() { _loading = false; });
+      setState(() {
+        _loading = false;
+      });
     });
   }
 
@@ -103,7 +106,8 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
       final maxAllowed = _maxAllowed[idx] ?? 0;
       final txt = _controllers[idx]?.text ?? '0';
       final qtyNow = int.tryParse(txt) ?? 0;
-      final toSubmit = qtyNow < 0 ? 0 : (qtyNow > maxAllowed ? maxAllowed : qtyNow);
+      final toSubmit =
+          qtyNow < 0 ? 0 : (qtyNow > maxAllowed ? maxAllowed : qtyNow);
       if (toSubmit > 0) {
         receivedItems.add({
           'orderId': widget.orderId,
@@ -120,16 +124,21 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
       return;
     }
 
-    setState(() { _loading = true; });
+    setState(() {
+      _loading = true;
+    });
 
     try {
-      final repo = ProductRepository(); // adjust ctor depending on your repo pattern
+      final repo =
+          ProductRepository(); // adjust ctor depending on your repo pattern
       await repo.receiveShipment(receivedItems);
       Helpers.showSnackBar('Received and recorded successfully');
       Navigator.of(context).pop(); // go back to orders list
     } catch (e) {
       Helpers.showSnackBar('Receive failed: $e');
-      setState(() { _loading = false; });
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
@@ -138,7 +147,9 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: Text('Receive Order')),
-        body: const Center(child: CircularProgressIndicator(color: Colors.black)),
+        body: Center(
+            child: CircularProgressIndicator(
+                color: Theme.of(context).primaryColor)),
       );
     }
     final created = (_orderData?['createdAt'] as Timestamp?)?.toDate();
@@ -152,7 +163,9 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     }
 
     // Use Date Only for heading as requested, ignoring the stored time-based orderName if we have createdAt
-    final orderName = created != null ? formatDateDdMmYyyy(created) : ((_orderData?['orderName'] as String?) ?? 'Order ${widget.orderId}');
+    final orderName = created != null
+        ? formatDateDdMmYyyy(created)
+        : ((_orderData?['orderName'] as String?) ?? 'Order ${widget.orderId}');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Receive Order')),
@@ -164,7 +177,8 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
             children: [
               ListTile(
                 title: Text(orderName),
-                subtitle: Text('Created: ${created != null ? created.toLocal().toString().split('.')[0] : '—'}'),
+                subtitle: Text(
+                    'Created: ${created != null ? created.toLocal().toString().split('.')[0] : '—'}'),
               ),
               const SizedBox(height: 8),
               Expanded(
@@ -181,12 +195,20 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                     final parts = encoded.split('|');
                     final weightKey =
                         '${parts[0] == '__shared__' ? '' : parts[0].replaceAll('_', '.')}|${parts[1].replaceAll('_', '.')}';
-                    String titleCase(String s) => s.split(' ').map((w) => w.isNotEmpty ? (w[0].toUpperCase() + w.substring(1)) : w).join(' ');
-                    final displayNameRaw = (item['productName'] as String?) ?? (productId as String);
-                    final displayName = titleCase(displayNameRaw.replaceAll('_', ' '));
+                    String titleCase(String s) => s
+                        .split(' ')
+                        .map((w) => w.isNotEmpty
+                            ? (w[0].toUpperCase() + w.substring(1))
+                            : w)
+                        .join(' ');
+                    final displayNameRaw = (item['productName'] as String?) ??
+                        (productId as String);
+                    final displayName =
+                        titleCase(displayNameRaw.replaceAll('_', ' '));
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 8.0),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -196,7 +218,8 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                               children: [
                                 Text(
                                   '$displayName - ${weightKey.split('|')[0].replaceAll('_', ' ')} - ${weightKey.split('|')[1].replaceAll('_', '').trim()}g',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -231,14 +254,20 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                                 hintText: '0',
                                 errorText: _errors[index],
                                 border: const OutlineInputBorder(),
-                                focusedBorder: const OutlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.black),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Theme.of(context).primaryColor),
                                 ),
-                                labelStyle: const TextStyle(color: Colors.black),
-                                floatingLabelStyle: const TextStyle(color: Colors.black),
+                                labelStyle: TextStyle(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? Colors.black54
+                                        : Colors.white70),
+                                floatingLabelStyle: TextStyle(
+                                    color: Theme.of(context).primaryColor),
                                 // isDense: true, // Optional: reduces default height if desired
                               ),
-                              cursorColor: Colors.black,
+                              cursorColor: Theme.of(context).primaryColor,
                             ),
                           ),
                         ],
@@ -247,17 +276,17 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                   },
                 ),
               ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _loading ? null : _submitReceive,
-              icon: const Icon(Icons.download_done),
-              label: const Text('Submit Receive'),
-            ),
-            const SizedBox(height: 12),
-          ],
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _loading ? null : _submitReceive,
+                icon: const Icon(Icons.download_done),
+                label: const Text('Submit Receive'),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
