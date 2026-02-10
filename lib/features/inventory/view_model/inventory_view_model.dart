@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/repositories/product_repository.dart';
+import '../../../core/services/database_service.dart';
 import 'dart:async';
 
 /// NOTE:
@@ -30,9 +32,14 @@ class InventoryViewModel extends ChangeNotifier {
   }
 
   final BuildContext context;
-  InventoryViewModel(this.context);
+  final DatabaseService databaseService;
+  final ProductRepository _repo;
 
-  final ProductRepository _repo = ProductRepository();
+  InventoryViewModel(this.context)
+      : databaseService = Provider.of<DatabaseService>(context, listen: false),
+        _repo = ProductRepository(
+            databaseService:
+                Provider.of<DatabaseService>(context, listen: false));
 
   /// Expose repository for higher-level operations (read-only).
   ProductRepository get repo => _repo;
@@ -48,12 +55,14 @@ class InventoryViewModel extends ChangeNotifier {
   /// ProductRepository.allocateManualReceive(...) helper. The repository will
   /// update orders and product weights atomically. After allocation we notify
   /// listeners so UI streams refresh.
-  Future<void> handleManualIncrease(String productId, String itemName, String weightKey, int delta) async {
+  Future<void> handleManualIncrease(
+      String productId, String itemName, String weightKey, int delta) async {
     _assertNotShared(weightKey);
     if (delta <= 0) return;
 
     try {
-      final result = await _repo.allocateManualReceive(productId, itemName, weightKey, delta);
+      final result = await _repo.allocateManualReceive(
+          productId, itemName, weightKey, delta);
 
       // show summary to user if possible
       try {
@@ -61,8 +70,10 @@ class InventoryViewModel extends ChangeNotifier {
         if (context.mounted) {
           final allocated = result['allocated'] ?? 0;
           final unallocated = result['unallocated'] ?? 0;
-          final msg = 'Allocated $allocated to pending orders; $unallocated added to stock.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
+          final msg =
+              'Allocated $allocated to pending orders; $unallocated added to stock.';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(msg), duration: const Duration(seconds: 3)));
         }
       } catch (_) {}
 
@@ -72,7 +83,8 @@ class InventoryViewModel extends ChangeNotifier {
       // surface an error snackbar but don't crash
       try {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to allocate received qty: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to allocate received qty: $e')));
         }
       } catch (_) {}
     }

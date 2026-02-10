@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'global/global_state.dart';
 import 'app/app.dart';
 import 'firebase_options.dart';
+import 'core/services/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,13 +14,17 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  final dbService = DatabaseService();
+  await dbService.init();
+
   // Load state
-  final globalState = GlobalState();
+  final globalState = GlobalState(databaseService: dbService);
   await globalState.loadThresholds();
 
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: dbService),
         ChangeNotifierProvider(
           create: (context) => InventoryViewModel(context),
         ),

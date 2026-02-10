@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:goldventory/global/global_state.dart';
 import 'package:goldventory/features/thresholds/thresholds_view_model.dart';
 import 'package:goldventory/features/thresholds/category_list.dart';
+import 'package:goldventory/core/services/database_service.dart';
 import '../../core/widgets/shimmer_loading.dart';
 import 'item_list.dart';
 import '../../app/theme.dart';
@@ -66,7 +67,9 @@ class ThresholdsPage extends StatelessWidget {
 
     return ChangeNotifierProvider<ThresholdsViewModel>(
       create: (_) {
-        final vm = ThresholdsViewModel(globalState: gs);
+        final dbService = Provider.of<DatabaseService>(context, listen: false);
+        final vm =
+            ThresholdsViewModel(globalState: gs, databaseService: dbService);
         Future.microtask(() => vm.load());
         return vm;
       },

@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'database_service.dart';
 
 /// ThresholdService
 ///
@@ -27,7 +28,8 @@ import 'package:firebase_core/firebase_core.dart';
 /// - Old documents shaped as item -> weightMap (no subItems) are transparently
 ///   loaded as subItem == '' in memory and re‑saved in the modern structure.
 class ThresholdService {
-  ThresholdService();
+  final DatabaseService databaseService;
+  ThresholdService({required this.databaseService});
 
   /// category -> item -> subItem -> weightKey -> value
   final Map<String, Map<String, Map<String, Map<String, dynamic>>>>
@@ -83,7 +85,7 @@ class ThresholdService {
         .putIfAbsent(category, () => {})
         .putIfAbsent(item, () => {})
         .putIfAbsent(s, () => {})
-        .putIfAbsent(weight, () => {});
+        .putIfAbsent(weight, () => null);
   }
 
   /// Set or update a threshold value.
@@ -240,7 +242,8 @@ class ThresholdService {
   /// Load thresholds from Firestore (`thresholds` collection) (server first then cache fallback)
   Future<void> load() async {
     try {
-      final col = FirebaseFirestore.instance.collection('thresholds');
+      final col = FirebaseFirestore.instance
+          .collection(databaseService.thresholdsCollection);
       final snaps = await col.get();
 
       // 1. Identify Layout Document
@@ -441,18 +444,34 @@ class ThresholdService {
           subMap.forEach((subItem, weightMap) {
             final Map<String, dynamic> weightPayload = {};
 
-            // Weight Order
-            final List<String> weightOrder = weightMap.keys
-                .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
-                .map(_safeKey)
-                .toList();
-            weightPayload['__weight_order'] = weightOrder;
+            // Weight Order: Skip for metadata
+            final List<String> weightOrder = subItem == '__metadata'
+                ? []
+                : weightMap.keys
+                    .where((w) => w.trim().isNotEmpty && !w.startsWith('__'))
+                    .map(_safeKey)
+                    .toList();
+            if (weightOrder.isNotEmpty) {
+              weightPayload['__weight_order'] = weightOrder;
+            }
 
-            weightMap.forEach((w, val) {
-              final outKey = _safeKey(w == '' ? '' : w.toString());
+            for (final weightKey in weightMap.keys) {
+              if (weightKey.startsWith('__')) continue;
+
+              final dynamic val = weightMap[weightKey];
+
+              // We only skip nulls for the master 'shared' map.
+              // For all other sub-items (S1, S13, etc.), we EXPLICITLY write the null
+              // to Firestore so the user can see the placeholder in the console.
+              final bool isSharedMap = (subItem == 'shared');
+              if (val == null && isSharedMap) {
+                continue;
+              }
+
+              final String outKey = _safeKey(weightKey);
               weightPayload[outKey] = val;
-            });
-            final safeSubItem = _safeKey(subItem.toString());
+            }
+            final String safeSubItem = _safeKey(subItem);
             subPayload[safeSubItem] = weightPayload;
           });
           final safeItem = _safeKey(item.toString());
@@ -471,7 +490,8 @@ class ThresholdService {
       } catch (_) {}
 
       // Write one document per category (exact mirror of inventory)
-      final col = FirebaseFirestore.instance.collection('thresholds');
+      final col = FirebaseFirestore.instance
+          .collection(databaseService.thresholdsCollection);
 
       // 1. Save Category Order Layout
       await col.doc('_layout').set({

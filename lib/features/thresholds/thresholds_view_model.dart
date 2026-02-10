@@ -5,6 +5,7 @@ import 'package:goldventory/global/global_state.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:goldventory/data/repositories/product_repository.dart';
 import 'package:goldventory/core/utils/helpers.dart';
+import 'package:goldventory/core/services/database_service.dart';
 
 enum WeightMode { shared, perSubItem }
 
@@ -23,6 +24,7 @@ String _encodeKey(String raw) {
 /// and exposes convenience methods for subItem and item-level shared weights.
 class ThresholdsViewModel extends ChangeNotifier {
   final GlobalState globalState;
+  final DatabaseService databaseService;
 
   /// Local editable copy: category -> item -> subItem -> weight -> threshold
   final Map<String, Map<String, Map<String, Map<String, int?>>>> _local = {};
@@ -39,16 +41,62 @@ class ThresholdsViewModel extends ChangeNotifier {
     return _weightModes[category]?[item];
   }
 
-  void setWeightMode(String category, String item, WeightMode mode) {
+  void setWeightMode(String category, String item, WeightMode mode,
+      {bool force = false}) {
     _weightModes.putIfAbsent(category, () => {});
-    // Lock-once semantics: do not allow changing mode once set
-    if (_weightModes[category]!.containsKey(item)) return;
+
+    // Lock-once semantics: do not allow changing mode once set unless forced
+    if (_weightModes[category]!.containsKey(item) && !force) return;
+
     _weightModes[category]![item] = mode;
     _dirty = true;
     notifyListeners();
   }
 
-  ThresholdsViewModel({required this.globalState}) {
+  /// Perform the backend erasure for weight migration.
+  /// This is called during Save if a mode change was detected.
+  Future<void> confirmMigration(
+      String category, String item, WeightMode newMode) async {
+    developer.log('Migration confirmed for $category/$item to $newMode',
+        name: 'ThresholdsVM');
+
+    // 1. Cascade delete from backend (Inventory, Thresholds, Orders)
+    // This removes all data associated with the old mode.
+    await ProductRepository(databaseService: databaseService)
+        .deleteItemCascade(category, item);
+
+    // 2. Clear GlobalState & Local state for this item to ensure a clean start
+    // We clear the weight data but MUST retain the sub-item identity
+    // so they can be re-populated with new weights.
+    final itemMap = _local[category]?[item];
+    if (itemMap != null) {
+      final subItems = itemMap.keys
+          .where((k) => !k.startsWith('__') && k != 'shared')
+          .toList();
+      itemMap.clear();
+      for (final sub in subItems) {
+        itemMap[sub] = {};
+      }
+    }
+    globalState.thresholds.asNestedMap()[category]?.remove(item);
+
+    // 3. Force GlobalState to update the mode metadata
+    globalState.setWeightModeFor(
+      category: category,
+      item: item,
+      isShared: newMode == WeightMode.shared,
+      force: true,
+    );
+
+    _dirty = true;
+    notifyListeners();
+
+    // 4. Force a commit to ensure the mode change and item-level erasures are persisted.
+    await _commit();
+  }
+
+  ThresholdsViewModel(
+      {required this.globalState, required this.databaseService}) {
     globalState.addListener(_onGlobalStateChanged);
   }
 
@@ -257,8 +305,10 @@ class ThresholdsViewModel extends ChangeNotifier {
     required String weight,
   }) {
     // 1. Try local
-    final val = _local[category]?[item]?[subItem]?[weight];
-    if (val != null) return val;
+    final weightMap = _local[category]?[item]?[subItem];
+    if (weightMap != null && weightMap.containsKey(weight)) {
+      return weightMap[weight];
+    }
 
     // 2. Fallback / Self-Repair: Check GlobalState
     // If _local is missing data that GlobalState has, we define GlobalState as truth (for display).
@@ -312,12 +362,12 @@ class ThresholdsViewModel extends ChangeNotifier {
     required String item,
     required String subItem,
     required String weight,
-    required int threshold,
+    required int? threshold,
   }) {
     if (category.trim().isEmpty ||
         item.trim().isEmpty ||
         weight.trim().isEmpty ||
-        threshold < 0) {
+        (threshold != null && threshold < 0)) {
       return;
     }
 
@@ -389,7 +439,8 @@ class ThresholdsViewModel extends ChangeNotifier {
     // We instantiate repo here since ThresholdsViewModel doesn't hold it permanently
     // (though strict DI would be better, this is pragmatic for this VM)
     // NOTE: This is destructive and irreversible.
-    await ProductRepository().deleteCategoryCascade(category);
+    await ProductRepository(databaseService: databaseService)
+        .deleteCategoryCascade(category);
 
     // CRITICAL: Remove from GlobalState to prevent resurrection during _commit()
     globalState.thresholds.asNestedMap().remove(category);
@@ -422,7 +473,10 @@ class ThresholdsViewModel extends ChangeNotifier {
     // but at least clean up the old Threshold doc.
 
     final safeOld = _encodeKey(oldName);
-    FirebaseFirestore.instance.collection('thresholds').doc(safeOld).delete();
+    FirebaseFirestore.instance
+        .collection(databaseService.thresholdsCollection)
+        .doc(safeOld)
+        .delete();
 
     unawaited(_commit());
   }
@@ -446,7 +500,10 @@ class ThresholdsViewModel extends ChangeNotifier {
     final safeCat = _encodeKey(category);
     final safeOld = _encodeKey(oldName);
 
-    FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
+    FirebaseFirestore.instance
+        .collection(databaseService.thresholdsCollection)
+        .doc(safeCat)
+        .update({
       safeOld: FieldValue.delete(),
     });
 
@@ -455,8 +512,9 @@ class ThresholdsViewModel extends ChangeNotifier {
     // We should move field(item) -> field(newitem)
     final safeNew = _encodeKey(newName);
 
-    final docRef =
-        FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+    final docRef = FirebaseFirestore.instance
+        .collection(databaseService.inventoryCollection)
+        .doc(safeCat);
     FirebaseFirestore.instance.runTransaction((tx) async {
       final snap = await tx.get(docRef);
       if (!snap.exists) return;
@@ -506,8 +564,9 @@ class ThresholdsViewModel extends ChangeNotifier {
     // 1. Migrate Inventory Data (Crucial to prevent data loss)
     // path: inventory/doc(cat)/item/oldSub -> inventory/doc(cat)/item/newSub
 
-    final docRef =
-        FirebaseFirestore.instance.collection('inventory').doc(safeCat);
+    final docRef = FirebaseFirestore.instance
+        .collection(databaseService.inventoryCollection)
+        .doc(safeCat);
     FirebaseFirestore.instance.runTransaction((tx) async {
       final snap = await tx.get(docRef);
       if (!snap.exists) return; // No inventory to migrate
@@ -545,7 +604,10 @@ class ThresholdsViewModel extends ChangeNotifier {
     // 2. Remove old key from Thresholds Firestore
     // (New key is written by _commit() -> save(), but old key remains unless deleted)
     final fieldPathOld = '$safeItem.$safeOld';
-    FirebaseFirestore.instance.collection('thresholds').doc(safeCat).update({
+    FirebaseFirestore.instance
+        .collection(databaseService.thresholdsCollection)
+        .doc(safeCat)
+        .update({
       fieldPathOld: FieldValue.delete(),
     });
 
@@ -592,9 +654,83 @@ class ThresholdsViewModel extends ChangeNotifier {
     // _commit pushes _local to GlobalState; it does not remove old keys.
     // If we commit before the caller removes the old key from GlobalState, we persist duplicates.
     // The caller MUST handles GlobalState updates and then call unawaited(_commit()).
+    // 5. Persist the *removal* from structure to GlobalState persistence
+    // Since we manually deleted from Firestore above via Repository,
+    // we use _commit() to sync the *absence* of the key in the in-memory GlobalState.
+    unawaited(_commit());
+  }
+
+  /// Remove a specific weight and cascade delete from backend
+  Future<void> deleteWeight({
+    required String category,
+    required String item,
+    required String subItem,
+    required String weight,
+  }) async {
+    // 1. Cascade Delete from Backend (Exhaustive cleanup)
+    await ProductRepository(databaseService: databaseService)
+        .deleteWeightCascade(category, item, subItem, weight);
+
+    // 2. Identify which sub-items to clean locally
+    final List<String> subsToClean = [];
+    if (subItem == 'shared' || subItem.isEmpty) {
+      // Clean ALL sub-items that contain this weight
+      final catMap = _local[category];
+      final itemMap = catMap?[item];
+      if (itemMap != null) {
+        itemMap.forEach((s, weightMap) {
+          if (weightMap.containsKey(weight)) {
+            subsToClean.add(s);
+          }
+        });
+      }
+    } else {
+      subsToClean.add(subItem);
+    }
+
+    // 3. Perform local removal
+    for (final s in subsToClean) {
+      final itemMap = _local[category]?[item];
+      final subMap = itemMap?[s];
+      if (subMap == null) continue;
+
+      subMap.remove(weight);
+
+      // Clean up parent nodes if they become empty
+      if (subMap.isEmpty) {
+        itemMap?.remove(s);
+        if (itemMap?.isEmpty ?? false) {
+          _local[category]?.remove(item);
+          if (_local[category]?.isEmpty ?? false) {
+            _local.remove(category);
+          }
+        }
+      }
+    }
+
+    // 4. Update Global State (prevent resurrection)
+    for (final s in subsToClean) {
+      final gCat = globalState.thresholds.asNestedMap()[category];
+      final gItem = gCat?[item];
+      final gSub = gItem?[s];
+      if (gSub != null) {
+        gSub.remove(weight);
+        // Clean up parent nodes in GlobalState if they become empty
+        if (gSub.isEmpty) {
+          gItem?.remove(s);
+          if (gItem?.isEmpty ?? false) {
+            gCat?.remove(item);
+            if (gCat?.isEmpty ?? false) {
+              globalState.thresholds.asNestedMap().remove(category);
+            }
+          }
+        }
+      }
+    }
 
     _dirty = true;
     notifyListeners();
+    await _commit();
   }
 
   /// Create a new item under a category. Do NOT create a default subItem.
@@ -617,41 +753,45 @@ class ThresholdsViewModel extends ChangeNotifier {
     assert(subItem.trim().isNotEmpty);
 
     _ensureCategoryItemSub(category, item, subItem);
-    _dirty = true;
-    notifyListeners();
 
-    // unawaited(_ensureInventoryPath(...)); // REMOVED: No more writes to inventory from Settings
-    unawaited(_commit());
-
-    // Auto-Copy Shared Weights Logic
+    // Auto-Copy Shared Weights Logic - MUST happen before _commit()
     // If in Shared Mode, the new sub-item should immediately inherit the schema of its siblings.
     final mode = weightModeFor(category, item);
     if (mode == WeightMode.shared) {
       final itemMap = _local[category]?[item];
       if (itemMap != null) {
-        // Find a donor
-        Map<String, int?>? donorWeights;
-        for (final otherSub in itemMap.keys) {
-          if (otherSub == subItem) continue; // skip self
-          if (otherSub.startsWith('__')) continue;
-          if (itemMap[otherSub]?.isNotEmpty ?? false) {
-            donorWeights = itemMap[otherSub];
-            break;
+        // Find a donor: Prefer the authoritative 'shared' key, then any sibling
+        Map<String, int?>? donorWeights = itemMap['shared'];
+
+        if (donorWeights == null || donorWeights.isEmpty) {
+          for (final otherSub in itemMap.keys) {
+            if (otherSub == subItem || otherSub == 'shared') continue;
+            if (otherSub.startsWith('__')) continue;
+            if (itemMap[otherSub]?.isNotEmpty ?? false) {
+              donorWeights = itemMap[otherSub];
+              break;
+            }
           }
         }
 
-        if (donorWeights != null) {
+        if (donorWeights != null && donorWeights.isNotEmpty) {
           // Copy structure (values initialized to null)
           _local[category]![item]![subItem] = {}; // ensure clean start
           for (final w in donorWeights.keys) {
             _local[category]![item]![subItem]![w] = null;
           }
           developer.log(
-              'createSubItem: Auto-copied ${donorWeights.length} shared weights to $subItem',
+              'createSubItem: Auto-copied ${donorWeights.length} weights to $subItem',
               name: 'SettingsVM');
         }
       }
     }
+
+    _dirty = true;
+    notifyListeners();
+
+    // Persist immediately so changes (including copied weights) survive
+    unawaited(_commit());
 
     // Force immediate availability for threshold UI
     notifyListeners();
@@ -660,7 +800,8 @@ class ThresholdsViewModel extends ChangeNotifier {
   /// Remove an item and all its subItems
   Future<void> deleteItem(String category, String item) async {
     // 1. Cascade Delete from Backend
-    await ProductRepository().deleteItemCascade(category, item);
+    await ProductRepository(databaseService: databaseService)
+        .deleteItemCascade(category, item);
 
     // 2. Remove from Local State
     final catMap = _local[category];
@@ -700,7 +841,8 @@ class ThresholdsViewModel extends ChangeNotifier {
 
     // 1. Cascade Delete from Backend
     // This handles Inventory and Thresholds deletion in Firestore, plus Order cleanup.
-    await ProductRepository().deleteSubItemCascade(category, item, subItem);
+    await ProductRepository(databaseService: databaseService)
+        .deleteSubItemCascade(category, item, subItem);
 
     // 2. Remove from Local State
     itemMap.remove(subItem);
@@ -752,27 +894,26 @@ class ThresholdsViewModel extends ChangeNotifier {
     // Ensure local structure exists
     _ensureCategoryItemSub(category, item, subItem);
 
-    // Clear existing weights for this subItem
-    _local[category]![item]![subItem]!.clear();
+    final oldWeightsMap = _local[category]![item]![subItem]!;
+    final newWeightsMap = <String, int?>{};
 
     for (final w in weights) {
       final weight = w.trim();
       if (weight.isEmpty) continue;
 
-      // Update local state
-      _local[category]![item]![subItem]![weight] = null;
+      // Preserve existing threshold if it exists, otherwise initialize to null
+      newWeightsMap[weight] = oldWeightsMap[weight];
 
-      // Thresholds: ensure empty structural node
+      // Thresholds: ensure structural node in GlobalState structure
       globalState.thresholds.ensureThresholdPath(
         category: category,
         item: item,
         subItem: subItem,
         weight: weight,
       );
-
-      // Inventory: ensure empty structural node
-      // unawaited(_ensureInventoryPath(...)); // REMOVED: No more writes to inventory from Settings
     }
+
+    _local[category]![item]![subItem] = newWeightsMap;
 
     _dirty = true;
     notifyListeners();
@@ -784,10 +925,21 @@ class ThresholdsViewModel extends ChangeNotifier {
     final itemMap = _local[category]?[item];
     if (itemMap == null) return [];
 
+    // 1. Try the explicit 'shared' master list
     final shared = itemMap['shared'];
-    if (shared == null) return [];
+    if (shared != null && shared.isNotEmpty) {
+      return shared.keys.map((e) => e.toString()).toList();
+    }
 
-    return shared.keys.map((e) => e.toString()).toList();
+    // 2. Fallback: Search siblings for configured weights
+    for (final entry in itemMap.entries) {
+      if (entry.key == 'shared' || entry.key.startsWith('__')) continue;
+      if (entry.value.isNotEmpty) {
+        return entry.value.keys.map((e) => e.toString()).toList();
+      }
+    }
+
+    return [];
   }
 
   Map<String, List<String>> weightsForItemBySubItem(
@@ -872,16 +1024,14 @@ class ThresholdsViewModel extends ChangeNotifier {
               weight: w,
             );
 
-            if (val != null) {
-              // Direct write to service to avoid 100s of notifyListeners()
-              globalState.thresholds.setThreshold(
-                category: cat, // ignore: invalid_use_of_protected_member
-                item: item,
-                subItem: subItem,
-                weight: w,
-                threshold: val,
-              );
-            }
+            // Direct write to service to avoid 100s of notifyListeners()
+            globalState.thresholds.setThreshold(
+              category: cat, // ignore: invalid_use_of_protected_member
+              item: item,
+              subItem: subItem,
+              weight: w,
+              threshold: val,
+            );
           }
         });
       });

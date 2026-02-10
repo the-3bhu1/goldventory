@@ -1,6 +1,7 @@
 import 'package:rxdart/rxdart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:goldventory/core/services/threshold_service.dart';
+import 'database_service.dart';
 
 String _decodeKey(String encoded) {
   return encoded.replaceAll('_', '.');
@@ -30,21 +31,24 @@ class ReorderRow {
 
 /// Read-only snapshot service for reorder logic
 class InventorySnapshotService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final DatabaseService databaseService;
   final ThresholdService thresholdService;
 
-  InventorySnapshotService({required this.thresholdService});
+  InventorySnapshotService({
+    required this.databaseService,
+    required this.thresholdService,
+  });
 
   Stream<List<ReorderRow>> streamReorderRows() {
-    final inventoryStream = _db.collection('inventory').snapshots();
-    final ordersStream = _db
-        .collection('orders')
-        .where('status', whereIn: ['pending', 'partial'])
-        .snapshots();
+    final db = FirebaseFirestore.instance;
+    final inventoryStream =
+        db.collection(databaseService.inventoryCollection).snapshots();
+    final ordersStream = db
+        .collection(databaseService.ordersCollection)
+        .where('status', whereIn: ['pending', 'partial']).snapshots();
 
-    return Rx.combineLatest2(inventoryStream, ordersStream, (invSnap, ordersSnap) {
-
-
+    return Rx.combineLatest2(inventoryStream, ordersStream,
+        (invSnap, ordersSnap) {
       // pending: category|item|subItem|weight -> qty
       final Map<String, int> pending = {};
 
@@ -54,18 +58,18 @@ class InventorySnapshotService {
         for (final it in items) {
           final wk = it['weightKey'] as String?;
           if (wk == null) continue;
-          
+
           // Decode encoded parts to match inventory keys
           // weightKey is often "sub_item|weight" or "__shared__|weight" (encoded)
           String decodedWk;
           if (wk.contains('|')) {
-             final parts = wk.split('|');
-             final s = parts[0] == '__shared__' ? '' : _decodeKey(parts[0]);
-             final w = _decodeKey(parts[1]);
-             decodedWk = '$s|$w';
+            final parts = wk.split('|');
+            final s = parts[0] == '__shared__' ? '' : _decodeKey(parts[0]);
+            final w = _decodeKey(parts[1]);
+            decodedWk = '$s|$w';
           } else {
-             // fallback if no pipe found
-             decodedWk = _decodeKey(wk);
+            // fallback if no pipe found
+            decodedWk = _decodeKey(wk);
           }
 
           final ordered = (it['qtyOrdered'] ?? 0) as int;
@@ -86,12 +90,15 @@ class InventorySnapshotService {
           if (itemVal is! Map) return;
           final item = _decodeKey(itemKey);
 
-          final Map<String, dynamic> subItems = Map<String, dynamic>.from(itemVal);
+          final Map<String, dynamic> subItems =
+              Map<String, dynamic>.from(itemVal);
           subItems.forEach((subItemKey, subVal) {
             if (subVal is! Map) return;
-            final subItem = subItemKey == '__shared__' ? '' : _decodeKey(subItemKey);
+            final subItem =
+                subItemKey == '__shared__' ? '' : _decodeKey(subItemKey);
 
-            final Map<String, dynamic> weights = Map<String, dynamic>.from(subVal);
+            final Map<String, dynamic> weights =
+                Map<String, dynamic>.from(subVal);
             weights.forEach((weightKey, qtyVal) {
               if (qtyVal == null) return;
               if (qtyVal is! int) return;

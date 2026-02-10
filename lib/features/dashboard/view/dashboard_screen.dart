@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:goldventory/app/routes.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
@@ -11,6 +12,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  DateTime? _lastPressedAt;
   @override
   void initState() {
     super.initState();
@@ -23,57 +25,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.maybePop(context),
-              )
-            : null,
-        title: const Text(
-          'Dashboard',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastPressedAt == null ||
+            now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+          _lastPressedAt = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        await SystemNavigator.pop();
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          centerTitle: true,
+          title: const Text(
+            'Dashboard',
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: Wrap(
-              spacing: 24,
-              runSpacing: 24,
-              alignment: WrapAlignment.center,
-              children: [
-                DashboardCard(
-                  title: 'Inventory',
-                  description: 'Track and manage your stock',
-                  icon: Icons.inventory_2_outlined,
-                  onTap: () =>
-                      Navigator.pushNamed(context, AppRoutes.inventory),
-                ),
-                DashboardCard(
-                  title: 'Reorder List',
-                  description: 'Check low stock and reorder',
-                  icon: Icons.shopping_cart_outlined,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.reorder),
-                ),
-                DashboardCard(
-                  title: 'Thresholds',
-                  description: 'Set thresholds for each item individually',
-                  icon: Icons.tune_outlined,
-                  onTap: () =>
-                      Navigator.pushNamed(context, AppRoutes.thresholds),
-                ),
-              ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Wrap(
+                spacing: 24,
+                runSpacing: 24,
+                alignment: WrapAlignment.center,
+                children: [
+                  DashboardCard(
+                    title: 'Inventory',
+                    description: 'Track and manage your stock',
+                    icon: Icons.inventory_2_outlined,
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.inventory),
+                  ),
+                  DashboardCard(
+                    title: 'Reorder List',
+                    description: 'Check low stock and reorder',
+                    icon: Icons.shopping_cart_outlined,
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.reorder),
+                  ),
+                  DashboardCard(
+                    title: 'Thresholds',
+                    description: 'Set thresholds for each item individually',
+                    icon: Icons.tune_outlined,
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.thresholds),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

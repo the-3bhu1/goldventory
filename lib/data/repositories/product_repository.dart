@@ -1,7 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product_model.dart';
+import 'package:goldventory/core/services/database_service.dart';
 
 class ProductRepository {
+  final DatabaseService databaseService;
+  final CollectionReference _db;
+
+  ProductRepository({required this.databaseService})
+      : _db = FirebaseFirestore.instance
+            .collection(databaseService.inventoryCollection);
+
   Map<String, dynamic> _sanitizeNestedMap(Map<String, dynamic> input) {
     final result = <String, dynamic>{};
 
@@ -25,9 +33,6 @@ class ProductRepository {
 
     return result;
   }
-
-  final CollectionReference _db =
-      FirebaseFirestore.instance.collection('inventory');
 
   String _decodeKey(String encoded) => encoded.replaceAll('_', '.');
 
@@ -102,7 +107,8 @@ class ProductRepository {
   /// Compute pending outstanding quantities per weightKey for a product
   /// by aggregating orders with status 'pending' or 'partial'.
   Future<Map<String, int>> computePendingForProduct(String productId) async {
-    final ordersCol = FirebaseFirestore.instance.collection('orders');
+    final ordersCol =
+        FirebaseFirestore.instance.collection(databaseService.ordersCollection);
     // Query pending / partial orders
     final q =
         await ordersCol.where('status', whereIn: ['pending', 'partial']).get();
@@ -135,7 +141,8 @@ class ProductRepository {
   Future<Map<String, Map<String, int>>> computePendingForProducts(
       List<String> productIds) async {
     if (productIds.isEmpty) return {};
-    final ordersCol = FirebaseFirestore.instance.collection('orders');
+    final ordersCol =
+        FirebaseFirestore.instance.collection(databaseService.ordersCollection);
     // Fetch all pending/partial orders
     final q =
         await ordersCol.where('status', whereIn: ['pending', 'partial']).get();
@@ -189,7 +196,8 @@ class ProductRepository {
       final orderId = entry.key;
       final itemsForOrder = entry.value;
 
-      final orderRef = db.collection('orders').doc(orderId);
+      final orderRef =
+          db.collection(databaseService.ordersCollection).doc(orderId);
 
       await db.runTransaction((tx) async {
         // Read order first
@@ -317,7 +325,7 @@ class ProductRepository {
 
     // Fetch pending/partial orders oldest-first that contain this product/weight
     final q = await db
-        .collection('orders')
+        .collection(databaseService.ordersCollection)
         .where('status', whereIn: ['pending', 'partial'])
         .orderBy('createdAt', descending: false)
         .get();
@@ -427,7 +435,8 @@ class ProductRepository {
       DateTime? expectedDelivery,
       String? createdBy}) async {
     try {
-      final orders = FirebaseFirestore.instance.collection('orders');
+      final orders = FirebaseFirestore.instance
+          .collection(databaseService.ordersCollection);
       final now = DateTime.now().toLocal();
       final orderName =
           '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
@@ -580,7 +589,10 @@ class ProductRepository {
 
     // 1. Delete Inventory Document
     try {
-      await db.collection('inventory').doc(safeCat).delete();
+      await db
+          .collection(databaseService.inventoryCollection)
+          .doc(safeCat)
+          .delete();
       print('Deleted inventory/$safeCat');
     } catch (e) {
       print('Error deleting inventory doc: $e');
@@ -588,7 +600,10 @@ class ProductRepository {
 
     // 2. Delete Thresholds Document
     try {
-      await db.collection('thresholds').doc(safeCat).delete();
+      await db
+          .collection(databaseService.thresholdsCollection)
+          .doc(safeCat)
+          .delete();
       print('Deleted thresholds/$safeCat');
     } catch (e) {
       print('Error deleting thresholds doc: $e');
@@ -611,20 +626,30 @@ class ProductRepository {
 
     // 1. Inventory: Remove field (safeItem) from document (safeCat)
     try {
-      await db.collection('inventory').doc(safeCat).update({
-        safeItem: FieldValue.delete(),
-      });
-      print('Deleted inventory item field: $safeItem');
+      final docRef =
+          db.collection(databaseService.inventoryCollection).doc(safeCat);
+      final snap = await docRef.get();
+      if (snap.exists) {
+        await docRef.update({
+          safeItem: FieldValue.delete(),
+        });
+        print('Deleted inventory item field: $safeItem');
+      }
     } catch (e) {
       print('Error updating inventory for item delete: $e');
     }
 
     // 2. Thresholds: Remove field (safeItem) from document (safeCat)
     try {
-      await db.collection('thresholds').doc(safeCat).update({
-        safeItem: FieldValue.delete(),
-      });
-      print('Deleted thresholds item field: $safeItem');
+      final docRef =
+          db.collection(databaseService.thresholdsCollection).doc(safeCat);
+      final snap = await docRef.get();
+      if (snap.exists) {
+        await docRef.update({
+          safeItem: FieldValue.delete(),
+        });
+        print('Deleted thresholds item field: $safeItem');
+      }
     } catch (e) {
       print('Error updating thresholds for item delete: $e');
     }
@@ -651,23 +676,32 @@ class ProductRepository {
         'Starting cascade delete for subitem: $category -> $item -> $subItem');
 
     // 1. Inventory: Remove nested key item.subItem
-    // Firestore dot notation allows updating nested fields
     final fieldPath = '$safeItem.$safeSub';
     try {
-      await db.collection('inventory').doc(safeCat).update({
-        fieldPath: FieldValue.delete(),
-      });
-      print('Deleted inventory subitem field: $fieldPath');
+      final docRef =
+          db.collection(databaseService.inventoryCollection).doc(safeCat);
+      final snap = await docRef.get();
+      if (snap.exists) {
+        await docRef.update({
+          fieldPath: FieldValue.delete(),
+        });
+        print('Deleted inventory subitem field: $fieldPath');
+      }
     } catch (e) {
       print('Error updating inventory for subitem delete: $e');
     }
 
     // 2. Thresholds: Remove nested key item.subItem
     try {
-      await db.collection('thresholds').doc(safeCat).update({
-        fieldPath: FieldValue.delete(),
-      });
-      print('Deleted thresholds subitem field: $fieldPath');
+      final docRef =
+          db.collection(databaseService.thresholdsCollection).doc(safeCat);
+      final snap = await docRef.get();
+      if (snap.exists) {
+        await docRef.update({
+          fieldPath: FieldValue.delete(),
+        });
+        print('Deleted thresholds subitem field: $fieldPath');
+      }
     } catch (e) {
       print('Error updating thresholds for subitem delete: $e');
     }
@@ -686,13 +720,96 @@ class ProductRepository {
     });
   }
 
+  /// Cascade delete for a specific Weight:
+  /// 1. Remove weight field from Inventory document (nested: cat/item/sub/weight)
+  /// 2. Remove weight field from Thresholds document (nested: cat/item/sub/weight)
+  /// 3. Remove items from Pending Orders matching category, item, subItem and weight
+  Future<void> deleteWeightCascade(
+      String category, String item, String subItem, String weight) async {
+    final safeCat = _encodeKey(category);
+    final safeItem = _encodeKey(item);
+    final safeWeight = _encodeKey(weight);
+    final db = FirebaseFirestore.instance;
+
+    print(
+        'Starting cascade delete for weight: $category -> $item -> $subItem -> $weight');
+
+    // 1 & 2. Inventory and Thresholds cleanup
+    final colls = [
+      databaseService.inventoryCollection,
+      databaseService.thresholdsCollection
+    ];
+
+    for (final coll in colls) {
+      try {
+        final docRef = db.collection(coll).doc(safeCat);
+        final snap = await docRef.get();
+        if (snap.exists) {
+          final data = snap.data();
+          final itemData = data?[safeItem];
+          if (itemData is Map) {
+            final List<String> pathsToDelete = [];
+
+            if (subItem == 'shared' || subItem.isEmpty) {
+              // Delete from EVERYTHING
+              itemData.forEach((subKey, subVal) {
+                if (subVal is Map && subVal.containsKey(safeWeight)) {
+                  pathsToDelete.add('$safeItem.$subKey.$safeWeight');
+                }
+              });
+            } else {
+              // Specific sub-item
+              final safeSub = _encodeKey(subItem);
+              pathsToDelete.add('$safeItem.$safeSub.$safeWeight');
+            }
+
+            if (pathsToDelete.isNotEmpty) {
+              final Map<String, dynamic> updates = {
+                for (var p in pathsToDelete) p: FieldValue.delete()
+              };
+              await docRef.update(updates);
+              print('Deleted $coll weight fields: ${pathsToDelete.length}');
+            }
+          }
+        }
+      } catch (e) {
+        print('Error updating $coll for weight delete: $e');
+      }
+    }
+
+    // 3. Clean up Orders
+    // Match: productId == category AND item == item AND weightKey matches weight
+    // If subItem is shared, we must match ANY sub-item's weight in the orders
+    await _cleanupOrders((orderItem) {
+      if (orderItem['productId'] != category) return false;
+      if (orderItem['item'] != item) return false;
+
+      final weightKey = orderItem['weightKey'] as String? ?? '';
+
+      if (subItem == 'shared' || subItem.isEmpty) {
+        // Shared mode: item might be stored as "__shared__|W", "shared|W", "s1|W", etc.
+        // We match ANY key that ends with the targeted weight suffix.
+        if (weightKey.contains('|')) {
+          final parts = weightKey.split('|');
+          return parts.last == safeWeight;
+        }
+        return weightKey == safeWeight; // Legacy/fallback
+      } else {
+        // Specific sub-item mode: match exact key
+        final safeSub = _encodeKey(subItem);
+        final targetKey = '$safeSub|$safeWeight';
+        return weightKey == targetKey;
+      }
+    });
+  }
+
   /// Helper to scan and clean pending orders based on a predicate
   Future<void> _cleanupOrders(
       bool Function(Map<String, dynamic>) shouldRemove) async {
     final db = FirebaseFirestore.instance;
     try {
       final ordersSnap = await db
-          .collection('orders')
+          .collection(databaseService.ordersCollection)
           .where('status', whereIn: ['pending', 'partial']).get();
 
       int deletedOrders = 0;

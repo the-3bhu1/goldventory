@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:goldventory/core/utils/helpers.dart';
 import 'package:goldventory/data/repositories/product_repository.dart';
+import 'package:goldventory/core/services/database_service.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 
 class ReceiveOrderScreen extends StatefulWidget {
@@ -35,8 +37,10 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     _loading = true;
     setState(() {});
 
+    final databaseService =
+        Provider.of<DatabaseService>(context, listen: false);
     _orderSub = FirebaseFirestore.instance
-        .collection('orders')
+        .collection(databaseService.ordersCollection)
         .doc(widget.orderId)
         .snapshots()
         .listen((doc) {
@@ -129,8 +133,11 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
     });
 
     try {
-      final repo =
-          ProductRepository(); // adjust ctor depending on your repo pattern
+      final databaseService =
+          Provider.of<DatabaseService>(context, listen: false);
+      final repo = ProductRepository(
+          databaseService:
+              databaseService); // adjust ctor depending on your repo pattern
       await repo.receiveShipment(receivedItems);
       Helpers.showSnackBar('Received and recorded successfully');
       Navigator.of(context).pop(); // go back to orders list
@@ -217,7 +224,7 @@ class _ReceiveOrderScreenState extends State<ReceiveOrderScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '$displayName - ${weightKey.split('|')[0].replaceAll('_', ' ')} - ${weightKey.split('|')[1].replaceAll('_', '').trim()}g',
+                                  '$displayName - ${item['item']} - ${weightKey.split('|')[0].replaceAll('_', ' ')} - ${weightKey.split('|')[1].replaceAll('_', '').trim()}g',
                                   style:
                                       Theme.of(context).textTheme.titleMedium,
                                 ),

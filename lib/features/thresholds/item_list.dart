@@ -367,9 +367,6 @@ class _ItemListState extends State<ItemList> {
                                                         {required subItem,
                                                         required weight,
                                                         required int? value}) {
-                                                      if (value == null) {
-                                                        return Future.value();
-                                                      }
                                                       watchVm.setThreshold(
                                                         category:
                                                             widget.category,
@@ -411,9 +408,6 @@ class _ItemListState extends State<ItemList> {
                                                       {required subItem,
                                                       required weight,
                                                       required int? value}) {
-                                                    if (value == null) {
-                                                      return Future.value();
-                                                    }
                                                     watchVm.setThreshold(
                                                       category: widget.category,
                                                       item: item,

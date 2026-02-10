@@ -21,6 +21,8 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
   final Map<String, TextEditingController> _perSubCtrls = {};
   final TextEditingController _addCtrl = TextEditingController();
   WeightMode? _mode;
+  bool _pendingMigration = false;
+  bool _isSaving = false;
 
   // Dirty check state
   bool _hydrated = false;
@@ -72,33 +74,177 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
       );
       return;
     }
-    // vm is defined in build, so we get it from context here
-    final vm = context.read<ThresholdsViewModel>();
-    // Persist weight mode (shared / per-subitem)
-    vm.setWeightMode(widget.category, widget.item, _mode!);
 
-    if (_mode == WeightMode.shared) {
-      // Persist shared weights by applying the same list to ALL sub-items
-      final subs = vm.settingsSubItemsFor(widget.category, widget.item);
-      for (final sub in subs) {
+    setState(() => _isSaving = true);
+    try {
+      final vm = context.read<ThresholdsViewModel>();
+
+      // 1. Handle Migration if pending
+      if (_pendingMigration) {
+        await vm.confirmMigration(widget.category, widget.item, _mode!);
+      }
+
+      // 2. Persist weight mode (shared / per-subitem)
+      // Use force: true if we migrated, just in case
+      vm.setWeightMode(widget.category, widget.item, _mode!,
+          force: _pendingMigration);
+
+      if (_mode == WeightMode.shared) {
+        // 1. Persist to the explicit 'shared' schema
         vm.setItemWeightsForSubItem(
           widget.category,
           widget.item,
-          sub,
+          'shared',
           _sharedWeights,
         );
+
+        // 2. Persist shared weights by applying the same list to ALL sub-items
+        final subs = vm.settingsSubItemsFor(widget.category, widget.item);
+        for (final sub in subs) {
+          vm.setItemWeightsForSubItem(
+            widget.category,
+            widget.item,
+            sub,
+            _sharedWeights,
+          );
+        }
+      } else if (_mode == WeightMode.perSubItem) {
+        // Persist per-sub-item weights ONLY (no thresholds)
+        _perSubItemWeights.forEach((subItem, weights) {
+          vm.setItemWeightsForSubItem(
+              widget.category, widget.item, subItem, weights);
+        });
       }
-    } else if (_mode == WeightMode.perSubItem) {
-      // Persist per-sub-item weights ONLY (no thresholds)
-      _perSubItemWeights.forEach((subItem, weights) {
-        vm.setItemWeightsForSubItem(
-            widget.category, widget.item, subItem, weights);
+
+      if (context.mounted) {
+        Helpers.showSnackBar('Weights saved');
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Helpers.showSnackBar('Error saving weights: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _handleModeToggle(WeightMode newMode) async {
+    if (_mode == newMode) return;
+
+    if (_initialMode != null && _initialMode != newMode) {
+      // Show warning for existing items
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(
+            'Change Weight Mode?',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? Theme.of(context).primaryColor
+                  : Colors.white,
+            ),
+          ),
+          content: const Text(
+            'This will erase all existing thresholds, inventory, and pending orders for this item. \n\n'
+            'Granular Erasure: Only this item will be removed from existing orders. \n\n'
+            'Are you sure you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      setState(() {
+        _mode = newMode;
+        _pendingMigration = true;
+        // Erase local edits to force user to re-enter weights for the new mode
+        _sharedWeights = [];
+        _perSubItemWeights.clear();
+        // and re-hydrate empty ctrls if needed?
+        // Logic in build() handles empty hydrating if _mode changes.
+      });
+    } else {
+      // First time setting mode, no warning needed
+      setState(() {
+        _mode = newMode;
       });
     }
+  }
 
-    if (context.mounted) {
-      Helpers.showSnackBar('Weights saved');
-      Navigator.of(context).pop(true);
+  Future<void> _deleteWeight(String subItem, String weight) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Delete Weight?',
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? Theme.of(context).primaryColor
+                : Colors.white,
+          ),
+        ),
+        content: Text(
+          'This will permanently delete "$weight" from this item\'s configuration, inventory, and any pending orders. \n\n'
+          'Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final vm = context.read<ThresholdsViewModel>();
+      await vm.deleteWeight(
+        category: widget.category,
+        item: widget.item,
+        subItem: subItem,
+        weight: weight,
+      );
+
+      // Locally remove from state to reflect immediately
+      if (subItem == 'shared' || _mode == WeightMode.shared) {
+        _sharedWeights.remove(weight);
+        _initialSharedWeights.remove(weight);
+      } else {
+        _perSubItemWeights[subItem]?.remove(weight);
+        _initialPerSubItemWeights[subItem]?.remove(weight);
+      }
+
+      if (mounted) {
+        Helpers.showSnackBar('Weight deleted');
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showSnackBar('Error deleting weight: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -130,6 +276,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
   }
 
   bool get _canSave {
+    if (_isSaving) return false;
     if (!_isDirty) return false;
 
     if (_mode == WeightMode.shared) {
@@ -153,28 +300,30 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
 
     // SHARED MODE — hydrate once
     if (_mode == WeightMode.shared && _sharedWeights.isEmpty) {
-      List<String> resolved =
-          vm.sharedWeightsForItem(widget.category, widget.item);
+      if (!_pendingMigration) {
+        List<String> resolved =
+            vm.sharedWeightsForItem(widget.category, widget.item);
 
-      // Fallback to searching sub-items if explicitly shared key is empty
-      if (resolved.isEmpty) {
-        for (final s in subs) {
-          final w = bySub[s];
-          if (w != null && w.isNotEmpty) {
-            resolved = w;
-            break;
+        // Fallback to searching sub-items if explicitly shared key is empty
+        if (resolved.isEmpty) {
+          for (final s in subs) {
+            final w = bySub[s];
+            if (w != null && w.isNotEmpty) {
+              resolved = w;
+              break;
+            }
           }
         }
-      }
 
-      _sharedWeights = [...resolved]
-        ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+        _sharedWeights = [...resolved]
+          ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
+      }
     }
 
     // PER-SUB-ITEM MODE — hydrate once
     if (_mode == WeightMode.perSubItem && _perSubItemWeights.isEmpty) {
       for (final s in subs) {
-        final w = bySub[s] ?? <String>[];
+        final w = _pendingMigration ? <String>[] : (bySub[s] ?? <String>[]);
         _perSubItemWeights[s] = [...w]
           ..sort((a, b) => Helpers.safeNum(a).compareTo(Helpers.safeNum(b)));
 
@@ -239,14 +388,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                       Theme.of(context).brightness == Brightness.light
                           ? Theme.of(context).primaryColor
                           : Colors.white,
-                  onSelected: (_) {
-                    final vm = context.read<ThresholdsViewModel>();
-                    vm.setWeightMode(
-                        widget.category, widget.item, WeightMode.shared);
-                    setState(() {
-                      _mode = WeightMode.shared;
-                    });
-                  },
+                  onSelected: (_) => _handleModeToggle(WeightMode.shared),
                 ),
                 ChoiceChip(
                   label: Text(
@@ -268,14 +410,7 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                       Theme.of(context).brightness == Brightness.light
                           ? Theme.of(context).primaryColor
                           : Colors.white,
-                  onSelected: (_) {
-                    final vm = context.read<ThresholdsViewModel>();
-                    vm.setWeightMode(
-                        widget.category, widget.item, WeightMode.perSubItem);
-                    setState(() {
-                      _mode = WeightMode.perSubItem;
-                    });
-                  },
+                  onSelected: (_) => _handleModeToggle(WeightMode.perSubItem),
                 ),
               ],
             ),
@@ -324,6 +459,9 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                                     backgroundColor:
                                         AppTheme.getHighlightBackground(
                                             context),
+                                    onDeleted: () => _deleteWeight('shared', w),
+                                    deleteIcon:
+                                        const Icon(Icons.close, size: 18),
                                   ))
                               .toList(),
                         ),
@@ -409,6 +547,10 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                                         backgroundColor:
                                             AppTheme.getHighlightBackground(
                                                 context),
+                                        onDeleted: () =>
+                                            _deleteWeight(subItem, w),
+                                        deleteIcon:
+                                            const Icon(Icons.close, size: 18),
                                       ))
                                   .toList();
                             })(),
@@ -457,7 +599,18 @@ class _ItemWeightsEditorState extends State<ItemWeightsEditor> {
                               foregroundColor: Theme.of(context).primaryColor,
                             )
                           : null,
-                      child: const Text('Save'),
+                      child: _isSaving
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            )
+                          : const Text('Save'),
                     ),
                   ),
                 ),

@@ -13,6 +13,7 @@ import 'package:goldventory/app/routes.dart';
 import '../../../../app/theme.dart';
 
 import '../../../../global/global_state.dart';
+import '../../../../core/services/database_service.dart';
 
 class ReorderScreen extends StatefulWidget {
   const ReorderScreen({super.key});
@@ -46,9 +47,12 @@ class _ReorderScreenState extends State<ReorderScreen> {
   void initState() {
     super.initState();
     final globalState = Provider.of<GlobalState>(context, listen: false);
-    _reorderStream =
-        InventorySnapshotService(thresholdService: globalState.thresholds)
-            .streamReorderRows();
+    final databaseService =
+        Provider.of<DatabaseService>(context, listen: false);
+    _reorderStream = InventorySnapshotService(
+            databaseService: databaseService,
+            thresholdService: globalState.thresholds)
+        .streamReorderRows();
   }
 
   @override
@@ -122,6 +126,16 @@ class _ReorderScreenState extends State<ReorderScreen> {
                       final rowsForItem = entry.value;
                       final title = rowsForItem.first.item;
 
+                      // Calculate if all orderable items are selected
+                      final orderableRows =
+                          rowsForItem.where((r) => r.toOrder > 0).toList();
+                      final allSelected = orderableRows.isNotEmpty &&
+                          orderableRows.every((r) {
+                            final rowKey =
+                                '${r.category}|${r.item}|${r.subItem}|${r.weight}';
+                            return _selected[rowKey] ?? false;
+                          });
+
                       return Card(
                         color: AppColors.inventoryCardBackground(context),
                         child: ExpansionTile(
@@ -134,12 +148,34 @@ class _ReorderScreenState extends State<ReorderScreen> {
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: DataTable(
-                                columns: const [
-                                  DataColumn(label: Text('Select')),
-                                  DataColumn(label: Text('Sub Item')),
-                                  DataColumn(label: Text('Weight')),
-                                  DataColumn(label: Text('To Order')),
-                                  DataColumn(label: Text('Pending')),
+                                columns: [
+                                  DataColumn(
+                                    label: Row(
+                                      children: [
+                                        Checkbox(
+                                          value: allSelected,
+                                          onChanged: orderableRows.isNotEmpty
+                                              ? (v) {
+                                                  setState(() {
+                                                    for (final r
+                                                        in orderableRows) {
+                                                      final rowKey =
+                                                          '${r.category}|${r.item}|${r.subItem}|${r.weight}';
+                                                      _selected[rowKey] =
+                                                          v ?? false;
+                                                    }
+                                                  });
+                                                }
+                                              : null,
+                                        ),
+                                        const Text('Select'),
+                                      ],
+                                    ),
+                                  ),
+                                  const DataColumn(label: Text('Sub Item')),
+                                  const DataColumn(label: Text('Weight')),
+                                  const DataColumn(label: Text('To Order')),
+                                  const DataColumn(label: Text('Pending')),
                                 ],
                                 rows: rowsForItem.map((r) {
                                   final rowKey =
@@ -192,9 +228,12 @@ class _ReorderScreenState extends State<ReorderScreen> {
 
           // Need to get the latest rows from the snapshot service
           final globalState = Provider.of<GlobalState>(context, listen: false);
+          final databaseService =
+              Provider.of<DatabaseService>(context, listen: false);
           final thresholdService = globalState.thresholds;
-          final snapshotService =
-              InventorySnapshotService(thresholdService: thresholdService);
+          final snapshotService = InventorySnapshotService(
+              databaseService: databaseService,
+              thresholdService: thresholdService);
           final rows = await snapshotService.streamReorderRows().first;
 
           for (final entry in _selected.entries) {
@@ -247,8 +286,9 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   })
               .toList();
 
-          final orderDoc =
-              await FirebaseFirestore.instance.collection('orders').add({
+          final orderDoc = await FirebaseFirestore.instance
+              .collection(databaseService.ordersCollection)
+              .add({
             'status': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
             'items': orderItems,
@@ -271,7 +311,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
           // Persist the display name onto the order document so other screens can show it
           try {
             await FirebaseFirestore.instance
-                .collection('orders')
+                .collection(databaseService.ordersCollection)
                 .doc(orderId)
                 .update({'orderName': orderDisplayName});
           } catch (e) {

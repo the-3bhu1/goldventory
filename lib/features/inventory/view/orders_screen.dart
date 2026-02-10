@@ -2,22 +2,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:goldventory/core/widgets/responsive_layout.dart';
 import 'package:goldventory/features/inventory/view/receive_order_screen.dart';
+import 'package:goldventory/core/services/database_service.dart';
+import 'package:provider/provider.dart';
 
 class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // simpler: use a StreamBuilder<QuerySnapshot> directly
+    final databaseService = Provider.of<DatabaseService>(context);
+    // busier: use a StreamBuilder<QuerySnapshot> directly
     return Scaffold(
       appBar: AppBar(title: const Text('Pending Orders')),
       body: Padding(
         padding: Responsive.screenPadding(context),
         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance
-              .collection('orders')
-              .where('status', whereIn: ['pending', 'partial'])
-              .snapshots(includeMetadataChanges: true),
+              .collection(databaseService.ordersCollection)
+              .where('status', whereIn: ['pending', 'partial']).snapshots(
+                  includeMetadataChanges: true),
           builder: (context, snap) {
             if (snap.hasError) {
               return Center(child: Text('Error loading orders: ${snap.error}'));
@@ -38,8 +41,10 @@ class OrdersScreen extends StatelessWidget {
               if (aName.isNotEmpty || bName.isNotEmpty) {
                 return aName.compareTo(bName);
               }
-              final aDate = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final bDate = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final aDate = (aData['createdAt'] as Timestamp?)?.toDate() ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              final bDate = (bData['createdAt'] as Timestamp?)?.toDate() ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
               return aDate.compareTo(bDate);
             });
             final meta = qs?.metadata;
@@ -72,7 +77,8 @@ class OrdersScreen extends StatelessWidget {
                 final d = docs[index];
                 final data = d.data();
                 final created = (data['createdAt'] as Timestamp?)?.toDate();
-                final expected = (data['expectedDelivery'] as Timestamp?)?.toDate();
+                final expected =
+                    (data['expectedDelivery'] as Timestamp?)?.toDate();
                 // Form "Order: DD-MM-YYYY"
                 String? title;
                 if (created != null) {
